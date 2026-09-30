@@ -1,0 +1,5 @@
+pygame
+flake8
+mypy
+pytest
+pydantic
