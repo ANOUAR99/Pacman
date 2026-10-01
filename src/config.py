@@ -6,6 +6,8 @@ class Config(BaseModel):
     """Store and validate Pac-Man configuration."""
 
     highscore_filename: str = Field(default="highscores.json")
+    width: int = Field(default=7, ge=5)
+    height: int = Field(default=5, ge=5)
     lives: int = Field(default=3, ge=1)
     pacgum: int = Field(default=42, ge=0)
     points_per_pacgum: int = Field(default=10, ge=1)
