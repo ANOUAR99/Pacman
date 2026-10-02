@@ -1,25 +1,26 @@
 from src.config import Config
 from src.game import Game
+import time
 
 config = Config(width=15, height=11)
 game = Game(config)
+game.config.level_max_time = 1
 
-print("Start:", game.player.x, game.player.y)
-print("Score:", game.player.score)
+print("Paused:", game.paused)
 
-game.move_player("E")
-
-print("After:", game.player.x, game.player.y)
-print("Score:", game.player.score)
-
-print("Before:")
-
-for i, ghost in enumerate(game.ghosts):
-    print(i + 1, ghost.x, ghost.y)
-
+time.sleep(0.5)
 game.update()
 
-print("After:")
+print("Game over after 0.5s:", game.game_over)
 
-for i, ghost in enumerate(game.ghosts):
-    print(i + 1, ghost.x, ghost.y)
+game.pause()
+time.sleep(1.0)
+game.update()
+
+print("Game over while paused:", game.game_over)
+
+game.resume()
+time.sleep(0.6)
+game.update()
+
+print("Game over after resume:", game.game_over)
