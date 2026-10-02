@@ -1,4 +1,4 @@
-from mazegenerator import MazeGenerator
+from .mazegenerator import MazeGenerator
 
 
 class Maze:
