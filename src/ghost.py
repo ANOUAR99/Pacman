@@ -9,6 +9,8 @@ class Ghost:
         """Initialize the ghost."""
         self.x = x
         self.y = y
+        self.start_x = x
+        self.start_y = y
         self.direction = "N"
         self.frightened = False
 
@@ -51,6 +53,12 @@ class Ghost:
     def recover(self) -> None:
         """Return the ghost to its normal state."""
         self.frightened = False
+
+    def reset_position(self) -> None:
+        """Return the ghost to its starting position."""
+        self.x = self.start_x
+        self.y = self.start_y
+        self.direction = "N"
 
     def chase(self, maze: Maze, target_x: int, target_y: int) -> bool:
         """Move one step toward the target position."""
