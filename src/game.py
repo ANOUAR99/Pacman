@@ -17,6 +17,7 @@ class Game:
         self.level = 1
         self.frightened_start = None
         self.frightened_duration = 10
+        self.score_saved = False
         self.high_scores = HighScore(config.highscore_filename)
         self.high_scores.load()
         self.start_level(self.config.lives)

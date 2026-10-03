@@ -9,3 +9,9 @@ high_scores = HighScore("highscores.json")
 # high_scores = HighScore("highscores.json")
 high_scores.load()
 print(high_scores.scores)
+game = Game(config)
+game.player.score = 3000
+game.start_time -= config.level_max_time + 1
+game.update()
+print("Game over:", game.game_over)
+print("Scores:", game.high_scores.scores)
