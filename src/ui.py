@@ -3,6 +3,7 @@ import sys
 from src.config import Config, read_config, remove_comments, parse_config
 from src.game import Game
 import time
+import json
 
 
 class PacmanUI:
@@ -22,6 +23,8 @@ class PacmanUI:
         pygame.font.init()
         self.font = pygame.font.Font(None, 24)
         self.input_text = ""
+        self.menu_options = ["Start Game", "View Highscores", "Instructions", "Exit"]
+        self.selected_index = 0
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -31,7 +34,11 @@ class PacmanUI:
             if event.type == pygame.KEYDOWN:
                 # Route inputs based on the current state
                 if self.state == "MAIN_MENU":
-                    if event.key == pygame.K_SPACE:
+                    if event.key == pygame.K_DOWN:
+                        self.selected_index = (self.selected_index + 1) % len(self.menu_options)
+                    elif event.key == pygame.K_UP:
+                        self.selected_index = (self.selected_index - 1) % len(self.menu_options)
+                    if self.selected_index == 0:
                         self.state = "PLAYING"  # Transition state!
                         if len(sys.argv) < 2:
                             print("Usage: python3 ui.py <config.json>")
@@ -41,6 +48,12 @@ class PacmanUI:
                         clean_text = remove_comments(raw_text)
                         config = parse_config(clean_text)
                         self.game = Game(config)
+                    elif self.selected_index == 1:
+                        pass
+                    elif self.selected_index == 2:
+                        pass
+                    elif self.selected_index == 3:
+                        self.quit_game()
                 elif self.state == "PLAYING":
                     if event.key == pygame.K_ESCAPE:
                         self.state = "PAUSED"
@@ -60,6 +73,12 @@ class PacmanUI:
                 elif self.state in ["GAME_OVER", "VICTORY"]:
                     if event.key == pygame.K_RETURN:
                         self.state = "MAIN_MENU"
+                        new_score = {"name": self.input_text, "score": self.game.player.score}
+                        try:
+                            with open(self.game.config.highscore_filename, "a") as f:
+                                f.write(json.dumps(new_score) + "\n")
+                        except Exception as e:
+                            print(f"Failed to save score: {e}")
                         self.input_text = ""  # Reset for next time
                     elif event.key == pygame.K_BACKSPACE:
                         # Slice off the last character
@@ -76,8 +95,13 @@ class PacmanUI:
 
         # Route drawing based on the current state
         if self.state == "MAIN_MENU":
-            # Draw menu text here later
-            pass
+            title = self.font.render("42 PAC-MAN", True, (255, 255, 255))
+            self.screen.blit(title, (350, 100))
+            for i, option in enumerate(self.menu_options):
+                color = (255, 255, 0) if i == self.selected_index else (255, 255, 255)
+                text_surface = self.font.render(option, True, color)
+                y_position = 250 + (i * 50)
+                self.screen.blit(text_surface, (350, y_position))
         elif self.state in ["PLAYING", "PAUSED"]:
             for y, row in enumerate(self.game.maze.grid):
                 for x, cell in enumerate(row):
@@ -151,9 +175,13 @@ class PacmanUI:
             if self.state == "PAUSED":
                 pause_text = self.font.render("PAUSED", True, (255, 255, 0))
                 self.screen.blit(pause_text, (350, 300))
-        elif self.state == "GAME_OVER":
-            game_over = self.font.render("GAME OVER", True, (255, 0, 0))
-            self.screen.blit(game_over, (10, 10))
+        elif self.state in ["GAME_OVER", "VICTORY"]:
+            if self.state == "VICTORY":
+                victory = self.font.render("VICTORY", True, (0, 0, 255))
+                self.screen.blit(victory, (10, 10))
+            else:
+                game_over = self.font.render("GAME OVER", True, (255, 0, 0))
+                self.screen.blit(game_over, (10, 10))
             input_surface = self.font.render(f"Input Text: {self.input_text}", True, (255, 255, 255))
             self.screen.blit(input_surface, (450, 10))
 
