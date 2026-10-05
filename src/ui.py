@@ -4,6 +4,7 @@ from src.config import Config, read_config, remove_comments, parse_config
 from src.game import Game
 import time
 import json
+from pathlib import Path
 
 
 class PacmanUI:
@@ -25,7 +26,19 @@ class PacmanUI:
         self.input_text = ""
         self.menu_options = ["Start Game", "View Highscores", "Instructions", "Exit"]
         self.selected_index = 0
-
+        project_root = Path(__file__).parent.parent
+        pacman_path = project_root / "src" / "assets" / "pacman.png"
+        ghost_path = project_root / "src" / "assets" / "ghost.png"
+        self.pacman_img = pygame.image.load(str(pacman_path)).convert_alpha()
+        self.ghost_img = pygame.image.load(str(ghost_path)).convert_alpha()
+        self.pacman_img = pygame.transform.scale(
+            self.pacman_img,
+            (self.cell_size, self.cell_size)
+            )
+        self.ghost_img = pygame.transform.scale(
+            self.ghost_img,
+            (self.cell_size, self.cell_size)
+            )
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -38,22 +51,23 @@ class PacmanUI:
                         self.selected_index = (self.selected_index + 1) % len(self.menu_options)
                     elif event.key == pygame.K_UP:
                         self.selected_index = (self.selected_index - 1) % len(self.menu_options)
-                    if self.selected_index == 0:
-                        self.state = "PLAYING"  # Transition state!
-                        if len(sys.argv) < 2:
-                            print("Usage: python3 ui.py <config.json>")
-                            sys.exit(1)
-                        config_path = sys.argv[1]
-                        raw_text = read_config(config_path)
-                        clean_text = remove_comments(raw_text)
-                        config = parse_config(clean_text)
-                        self.game = Game(config)
-                    elif self.selected_index == 1:
-                        pass
-                    elif self.selected_index == 2:
-                        pass
-                    elif self.selected_index == 3:
-                        self.quit_game()
+                    elif event.key == pygame.K_RETURN:    
+                        if self.selected_index == 0:
+                            self.state = "PLAYING"  # Transition state!
+                            if len(sys.argv) < 2:
+                                print("Usage: python3 ui.py <config.json>")
+                                sys.exit(1)
+                            config_path = sys.argv[1]
+                            raw_text = read_config(config_path)
+                            clean_text = remove_comments(raw_text)
+                            config = parse_config(clean_text)
+                            self.game = Game(config)
+                        elif self.selected_index == 1:
+                            pass
+                        elif self.selected_index == 2:
+                            pass
+                        elif self.selected_index == 3:
+                            self.quit_game()
                 elif self.state == "PLAYING":
                     if event.key == pygame.K_ESCAPE:
                         self.state = "PAUSED"
@@ -103,6 +117,8 @@ class PacmanUI:
                 y_position = 250 + (i * 50)
                 self.screen.blit(text_surface, (350, y_position))
         elif self.state in ["PLAYING", "PAUSED"]:
+            color = (0, 0, 150)
+            tickness = 2
             for y, row in enumerate(self.game.maze.grid):
                 for x, cell in enumerate(row):
                     rect = pygame.Rect(
@@ -111,17 +127,37 @@ class PacmanUI:
                         self.cell_size,
                         self.cell_size
                         )
-                    if cell == 15:
-                        pygame.draw.rect(
+                    if cell & 1:
+                        pygame.draw.line(
                             self.screen,
-                            (0, 0, 150),
-                            rect
+                            color,
+                            rect.topleft,
+                            rect.topright,
+                            tickness
                             )
-                    else:
-                        pygame.draw.rect(
+                    if cell & 2:
+                        pygame.draw.line(
                             self.screen,
-                            (0, 0, 0),
-                            rect
+                            color,
+                            rect.topright,
+                            rect.bottomright,
+                            tickness
+                            )
+                    if cell & 4:
+                        pygame.draw.line(
+                            self.screen,
+                            color,
+                            rect.bottomright,
+                            rect.bottomleft,
+                            tickness
+                            )
+                    if cell & 8:
+                        pygame.draw.line(
+                            self.screen,
+                            color,
+                            rect.topleft,
+                            rect.bottomleft,
+                            tickness
                             )
             for x, y in self.game.maze.pacgums:
                 center_x = (x * self.cell_size) + (self.cell_size // 2)
@@ -142,23 +178,13 @@ class PacmanUI:
                     8
                     )
             for ghost in self.game.ghosts:
-                center_x = (ghost.x * self.cell_size) + (self.cell_size // 2)
-                center_y = (ghost.y * self.cell_size) + (self.cell_size // 2)
-                pygame.draw.circle(
-                    self.screen,
-                    (255, 0, 0),
-                    (center_x, center_y),
-                    12
-                    )
+                pixel_x = ghost.x * self.cell_size
+                pixel_y = ghost.y * self.cell_size
+                self.screen.blit(self.ghost_img, (pixel_x, pixel_y))
             player = self.game.player
-            center_x = (player.x * self.cell_size) + (self.cell_size // 2)
-            center_y = (player.y * self.cell_size) + (self.cell_size // 2)
-            pygame.draw.circle(
-                self.screen,
-                (255, 255, 0),
-                (center_x, center_y),
-                12
-                )
+            pixel_x = player.x * self.cell_size
+            pixel_y = player.y * self.cell_size
+            self.screen.blit(self.pacman_img, (pixel_x, pixel_y))
             current_score = self.game.player.score
             score_surface = self.font.render(f"Score: {current_score}", True, (255, 255, 255))
             self.screen.blit(score_surface, (10, 10))
