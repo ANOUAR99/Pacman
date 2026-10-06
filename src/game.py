@@ -4,6 +4,7 @@ from src.player import Player
 from src.ghost import Ghost
 from src.highscore import HighScore
 import time
+import random
 
 
 class Game:
@@ -20,9 +21,12 @@ class Game:
         self.score_saved = False
         self.high_scores = HighScore(config.highscore_filename)
         self.high_scores.load()
-        self.start_level(self.config.lives)
+        self.ghost_respawn_delay = 5
+        self.start_level(self.config.lives, 0, self.config.seed)
 
-    def start_level(self, lives: int, score: int = 0) -> None:
+    def start_level(
+        self, lives: int, score: int, new_seed: int
+    ) -> None:
         """Initialize the current level."""
         player_x = self.config.width // 2
         player_y = self.config.height // 2
@@ -30,7 +34,7 @@ class Game:
         self.maze = Maze(
             width=self.config.width,
             height=self.config.height,
-            seed=self.config.seed,
+            seed=new_seed,
             player_start=(player_x, player_y),
         )
 
@@ -58,10 +62,12 @@ class Game:
         """Start the next level while preserving lives and score."""
         self.level += 1
         self.level_won = False
+        seed = random.randint(43, 1000)
 
         self.start_level(
             self.player.lives,
             self.player.score,
+            seed,
         )
 
     def collect_items(self) -> None:
@@ -99,8 +105,6 @@ class Game:
 
             if result == "ghost_defeated":
                 self.player.score += self.config.points_per_ghost
-                ghost.reset_position()
-                ghost.recover()
 
             elif result == "player_hit":
                 player_hit = True
@@ -146,6 +150,7 @@ class Game:
 
     def update(self) -> None:
         """Update the game state."""
+        current_time = time.monotonic()
         if self.game_over:
             if not self.score_saved:
                 self.high_scores.add_score(self.player.score)
@@ -161,15 +166,28 @@ class Game:
                 self.frightened_start = None
 
         for ghost in self.ghosts:
-            ghost.chase(
-                self.maze,
-                self.player.x,
-                self.player.y,
-            )
+            if ghost.eaten_time is None:
+                ghost.chase(
+                    self.maze,
+                    self.player.x,
+                    self.player.y,
+                )
         self.handle_collisions()
+        for ghost in self.ghosts:
+            if (
+                ghost.eaten_time is not None
+                and current_time - ghost.eaten_time >= self.ghost_respawn_delay
+            ):
+                ghost.reset_position()
+                ghost.recover()
+                ghost.eaten_time = None
         self.check_win()
-        if not self.level_won:
+
+        if self.level_won:
+            self.next_level()
+        else:
             self.check_timeout()
+
         if self.game_over and not self.score_saved:
             self.high_scores.add_score(self.player.score)
             self.high_scores.save()

@@ -1,5 +1,6 @@
 from src.maze import Maze
 from src.player import Player
+import time
 
 
 class Ghost:
@@ -13,6 +14,7 @@ class Ghost:
         self.start_y = y
         self.direction = "N"
         self.frightened = False
+        self.eaten_time = None
 
     def collides_with(self, player_x: int, player_y: int) -> bool:
         """Return True if the ghost occupies the player's position."""
@@ -24,6 +26,7 @@ class Ghost:
             return "none"
 
         if self.frightened:
+            self.eaten_time = time.monotonic()
             return "ghost_defeated"
 
         player.lose_life()
