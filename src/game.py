@@ -23,6 +23,8 @@ class Game:
         self.high_scores.load()
         self.ghost_respawn_delay = 5
         self.start_level(self.config.lives, 0, self.config.seed)
+        self.ghost_move_delay = 0.25  # seconds between ghost moves
+        self.ghost_detect_range = 5  # in maze steps
 
     def start_level(
         self, lives: int, score: int, new_seed: int
@@ -54,6 +56,7 @@ class Game:
 
         self.ghosts = [Ghost(x, y) for x, y in ghost_positions]
         self.start_time = time.monotonic()
+        self.last_ghost_move = time.monotonic()
         self.paused = False
         self.paused_time = 0.0
         self.pause_start = 0.0
@@ -165,13 +168,20 @@ class Game:
                     ghost.recover()
                 self.frightened_start = None
 
-        for ghost in self.ghosts:
-            if ghost.eaten_time is None:
-                ghost.chase(
-                    self.maze,
-                    self.player.x,
-                    self.player.y,
-                )
+        if current_time - self.last_ghost_move >= self.ghost_move_delay:
+            self.last_ghost_move = current_time
+            for ghost in self.ghosts:
+                if ghost.eaten_time is not None:
+                    continue
+                if ghost.frightened:
+                    ghost.wander(self.maze)
+                else:
+                    ghost.chase(
+                        self.maze,
+                        self.player.x,
+                        self.player.y,
+                        self.ghost_detect_range,
+                    )
         self.handle_collisions()
         for ghost in self.ghosts:
             if (
