@@ -38,11 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-<<<<<<< HEAD
-VIRTUAL_ENV=/goinfre/melmoara/Pacman/.venv
-=======
-VIRTUAL_ENV=/goinfre/anbenaay/Pacman/.venv
->>>>>>> bebb31e (7th_push)
+VIRTUAL_ENV=/home/melmoara/Pacman/.venv
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

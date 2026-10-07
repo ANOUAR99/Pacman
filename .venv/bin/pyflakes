@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-#!/goinfre/melmoara/Pacman/.venv/bin/python3
-=======
-#!/goinfre/anbenaay/Pacman/.venv/bin/python3
->>>>>>> bebb31e (7th_push)
+#!/home/melmoara/Pacman/.venv/bin/python3
 import sys
 from pyflakes.api import main
 if __name__ == '__main__':

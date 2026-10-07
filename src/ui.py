@@ -20,29 +20,38 @@ class PacmanUI:
 
         # This is where you will eventually hook up your partner's engine
         self.game = None
-
-        self.cell_size = 30
         pygame.font.init()
         self.input_text = ""
         self.menu_options = ["Start Game", "View Highscores", "Instructions", "Exit"]
         self.selected_index = 0
         self.last_engine_tick = 0
-        self.tick_delay = 250
+        self.tick_delay = 200
         self.hud_offset = 60
         self.ghost_normal_imgs = []
         project_root = Path(__file__).parent.parent
         colors = ["red", "pink", "cyan", "orange"]
-        for color in colors:
-            path = project_root / "src" / "assets" / f"{color}_ghost.png"
-            img = pygame.image.load(str(path)).convert_alpha()
-            img = pygame.transform.scale(img, (self.cell_size, self.cell_size))
-            self.ghost_normal_imgs.append(img)
+        
         open_path = project_root / "src" / "assets" / "pacman.png"
         closed_path = project_root / "src" / "assets" / "pacman_closed.png"
         f_ghost_path = project_root / "src" / "assets" / "f_ghost.png"
         font_path = project_root / "src" / "assets" / "ARCADE_N.TTF"
         self.font = pygame.font.Font(str(font_path), 12)
         w_ghost_path = project_root / "src" / "assets" / "w_ghost.png"
+        if len(sys.argv) < 2:
+            print("Usage: python3 ui.py <config.json>")
+            sys.exit(1)
+        config_path = sys.argv[1]
+        raw_text = read_config(config_path)
+        clean_text = remove_comments(raw_text)
+        self.config = parse_config(clean_text)
+        max_width_cell = 800 // self.config.width
+        max_height_cell = (600 - self.hud_offset) // self.config.height
+        self.cell_size = min(max_width_cell, max_height_cell)
+        for color in colors:
+            path = project_root / "src" / "assets" / f"{color}_ghost.png"
+            img = pygame.image.load(str(path)).convert_alpha()
+            img = pygame.transform.scale(img, (self.cell_size, self.cell_size))
+            self.ghost_normal_imgs.append(img)
         self.w_ghost_img = pygame.transform.scale(
             pygame.image.load(str(w_ghost_path)).convert_alpha(),
             (self.cell_size, self.cell_size)
@@ -59,15 +68,11 @@ class PacmanUI:
         self.pac_closed = pygame.transform.scale(
             pygame.image.load(str(closed_path)).convert_alpha(),
             (self.cell_size, self.cell_size)
-            ) # milliseconds per grid move
-        if len(sys.argv) < 2:
-            print("Usage: python3 ui.py <config.json>")
-            sys.exit(1)
-        config_path = sys.argv[1]
-        raw_text = read_config(config_path)
-        clean_text = remove_comments(raw_text)
-        self.config = parse_config(clean_text)
-
+            )
+        self.prev_player_pos = (0, 0)
+        self.prev_ghost_pos = {}  # Maps ghost index to (x, y)
+        self.queued_direction = None
+    
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -98,13 +103,13 @@ class PacmanUI:
                         self.state = "PAUSED"
                         self.game.pause()
                     elif event.key in (pygame.K_w, pygame.K_UP):
-                        self.game.move_player("N")
+                        self.queued_direction = "N"
                     elif event.key in (pygame.K_s, pygame.K_DOWN):
-                        self.game.move_player("S")
+                        self.queued_direction = "S"
                     elif event.key in (pygame.K_a, pygame.K_LEFT):
-                        self.game.move_player("W")
+                        self.queued_direction = "W"
                     elif event.key in (pygame.K_d, pygame.K_RIGHT):
-                        self.game.move_player("E")
+                        self.queued_direction = "E"
                 elif self.state == "PAUSED":
                     if event.key == pygame.K_ESCAPE:
                         self.state = "PLAYING"
@@ -142,77 +147,54 @@ class PacmanUI:
                 y_position = 250 + (i * 50)
                 self.screen.blit(text_surface, (350, y_position))
         elif self.state in ["PLAYING", "PAUSED"]:
-            tickness = 2
+            grid = self.game.maze.grid
+            max_y = self.game.config.height - 1
+            max_x = self.game.config.width - 1
             for y, row in enumerate(self.game.maze.grid):
                 for x, cell in enumerate(row):
+                    is_42 = (cell == 15)
+                    draw_n = bool(cell & 1)
+                    draw_e = bool(cell & 2)
+                    draw_s = bool(cell & 4)
+                    draw_w = bool(cell & 8)
+                    if is_42:
+                        glow_color = (255, 140, 0)
+                        if y > 0 and grid[y-1][x] == 15:
+                            draw_n = False
+                        if y < max_y and grid[y+1][x] == 15:
+                            draw_s = False
+                        if x < max_x and grid[y][x+1] == 15:
+                            draw_e = False
+                        if x > 0 and grid[y][x-1] == 15:
+                            draw_w = False
+                    else:
+                        glow_color = (0, 0, 255)  # Arcade Blue
+                        if draw_n and y > 0 and grid[y-1][x] == 15: draw_n = False
+                        if draw_s and y < max_y and grid[y+1][x] == 15: draw_s = False
+                        if draw_e and x < max_x and grid[y][x+1] == 15: draw_e = False
+                        if draw_w and x > 0 and grid[y][x-1] == 15: draw_w = False
+                    core_color = (0, 0, 0)
+                    glow_thick = 6
+                    core_thick = 2
+
                     rect = pygame.Rect(
                         x * self.cell_size,
                         y * self.cell_size + self.hud_offset,
                         self.cell_size,
                         self.cell_size
                         )
-                    outer_glow_color = (0, 0 ,100)
-                    inner_core_color = (0, 255, 255)
-                    if cell & 1:
-                        pygame.draw.line(
-                            self.screen,
-                            inner_core_color,
-                            rect.topleft,
-                            rect.topright,
-                            tickness
-                            )
-                        pygame.draw.line(
-                            self.screen,
-                            outer_glow_color,
-                            rect.topleft,
-                            rect.topright,
-                            tickness + 4
-                            )
-                    if cell & 2:
-                        pygame.draw.line(
-                            self.screen,
-                            inner_core_color,
-                            rect.topright,
-                            rect.bottomright,
-                            tickness
-                            )
-                        pygame.draw.line(
-                            self.screen,
-                            outer_glow_color,
-                            rect.topright,
-                            rect.bottomright,
-                            tickness + 4
-                            )
-                    if cell & 4:
-                        pygame.draw.line(
-                            self.screen,
-                            inner_core_color,
-                            rect.bottomright,
-                            rect.bottomleft,
-                            tickness
-                            )
-                        pygame.draw.line(
-                            self.screen,
-                            outer_glow_color,
-                            rect.bottomright,
-                            rect.bottomleft,
-                            tickness + 4
-                            )
-                    if cell & 8:
-                        pygame.draw.line(
-                            self.screen,
-                            inner_core_color,
-                            rect.topleft,
-                            rect.bottomleft,
-                            tickness
-                            )
-                        pygame.draw.line(
-                            self.screen,
-                            outer_glow_color,
-                            rect.topleft,
-                            rect.bottomleft,
-                            tickness + 4
-                            )
+                    if draw_n:
+                        pygame.draw.line(self.screen, glow_color, rect.topleft, rect.topright, glow_thick)
+                        pygame.draw.line(self.screen, core_color, rect.topleft, rect.topright, core_thick)
+                    if draw_e:
+                        pygame.draw.line(self.screen, glow_color, rect.topright, rect.bottomright, glow_thick)
+                        pygame.draw.line(self.screen, core_color, rect.topright, rect.bottomright, core_thick)
+                    if draw_s:
+                        pygame.draw.line(self.screen, glow_color, rect.bottomleft, rect.bottomright, glow_thick)
+                        pygame.draw.line(self.screen, core_color, rect.bottomleft, rect.bottomright, core_thick)
+                    if draw_w:
+                        pygame.draw.line(self.screen, glow_color, rect.topleft, rect.bottomleft, glow_thick)
+                        pygame.draw.line(self.screen, core_color, rect.topleft, rect.bottomleft, core_thick)
             for x, y in self.game.maze.pacgums:
                 center_x = (x * self.cell_size) + (self.cell_size // 2)
                 center_y = (y * self.cell_size) + (self.cell_size // 2) + self.hud_offset
@@ -234,8 +216,22 @@ class PacmanUI:
                     pulse_radius
                     )
             for i, ghost in enumerate(self.game.ghosts):
-                pixel_x = ghost.x * self.cell_size
-                pixel_y = ghost.y * self.cell_size + self.hud_offset
+                current_time = pygame.time.get_ticks()
+                # 1. Calculate fractional progress (0.0 to 1.0)
+                time_since_tick = current_time - self.last_engine_tick
+                progress = min(time_since_tick / self.tick_delay, 1.0)
+                # 2. Grab the specific ghost's past and present coordinates
+                old_x, old_y = self.prev_ghost_pos[i]
+                new_x, new_y = ghost.x, ghost.y
+                # 3. Apply the relaxed guard (handles death respawns)
+                if abs(new_x - old_x) > 5 or abs(new_y - old_y) > 5:
+                    render_x, render_y = new_x, new_y
+                else:
+                    render_x = old_x + ((new_x - old_x) * progress)
+                    render_y = old_y + ((new_y - old_y) * progress)
+                # 4. Final screen coordinates
+                pixel_x = render_x * self.cell_size
+                pixel_y = (render_y * self.cell_size) + self.hud_offset
                 if ghost.frightened:
                     elapsed = time.monotonic() - self.game.frightened_start
                     remaining = self.game.frightened_duration - elapsed
@@ -247,8 +243,19 @@ class PacmanUI:
                     active_img = self.ghost_normal_imgs[i % 4]
                 self.screen.blit(active_img, (pixel_x, pixel_y))
             player = self.game.player
-            pixel_x = player.x * self.cell_size
-            pixel_y = player.y * self.cell_size + self.hud_offset
+            current_time = pygame.time.get_ticks()
+            time_since_tick = current_time - self.last_engine_tick
+            progress = min(time_since_tick / self.tick_delay, 1.0)
+            old_x, old_y = self.prev_player_pos
+            new_x, new_y = player.x, player.y
+            if abs(new_x - old_x) > 5 or abs(new_y - old_y) > 5:
+                render_x, render_y = new_x, new_y
+            else:
+                render_x = old_x + ((new_x - old_x) * progress)
+                render_y = old_y + ((new_y - old_y) * progress)
+
+            pixel_x = render_x * self.cell_size
+            pixel_y = (render_y * self.cell_size) + self.hud_offset
             current_time = pygame.time.get_ticks()
             if (current_time // 200) % 2 == 0:
                 current_sprite = self.pac_open
@@ -315,6 +322,13 @@ class PacmanUI:
             if self.state == "PLAYING" and self.game is not None:
                 current_time = pygame.time.get_ticks()
                 if current_time - self.last_engine_tick > self.tick_delay:
+                    # 1. SNAPSHOT: Remember where everyone is before they move
+                    self.prev_player_pos = (self.game.player.x, self.game.player.y)
+                    for i, ghost in enumerate(self.game.ghosts):
+                        self.prev_ghost_pos[i] = (ghost.x, ghost.y)
+                    # 2. DISCHARGE BUFFER: Apply the stored keyboard input
+                    if self.queued_direction:
+                        self.game.move_player(self.queued_direction)
                     self.game.update()
                     self.last_engine_tick = current_time
                     if self.game.game_over:
