@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 #!/goinfre/melmoara/Pacman/.venv/bin/python3
+=======
+#!/goinfre/anbenaay/Pacman/.venv/bin/python3
+>>>>>>> bebb31e (7th_push)
 import sys
 from _pytest.config import _console_main
 if __name__ == '__main__':

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 #!/goinfre/melmoara/Pacman/.venv/bin/python3
+=======
+#!/goinfre/anbenaay/Pacman/.venv/bin/python3
+>>>>>>> bebb31e (7th_push)
 # -*- coding: utf-8 -*-
 import re
 import sys

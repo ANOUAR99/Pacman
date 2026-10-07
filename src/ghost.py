@@ -83,7 +83,7 @@ class Ghost:
         while queue:
             x, y = queue.popleft()
             if depth[(x, y)] >= max_range:
-                continue  # don't search beyond detection range
+                continue
             for direction, (dx, dy) in DIRECTIONS.items():
                 if not maze.can_move(x, y, direction):
                     continue

@@ -23,12 +23,10 @@ class Game:
         self.high_scores.load()
         self.ghost_respawn_delay = 5
         self.start_level(self.config.lives, 0, self.config.seed)
-        self.ghost_move_delay = 0.25  # seconds between ghost moves
-        self.ghost_detect_range = 5  # in maze steps
+        self.ghost_move_delay = 0.25
+        self.ghost_detect_range = 5
 
-    def start_level(
-        self, lives: int, score: int, new_seed: int
-    ) -> None:
+    def start_level(self, lives: int, score: int, new_seed: int) -> None:
         """Initialize the current level."""
         player_x = self.config.width // 2
         player_y = self.config.height // 2
@@ -46,6 +44,8 @@ class Game:
             lives,
         )
         self.player.score = score
+        self.queued_direction = None
+        self.player.direction = None
 
         ghost_positions = [
             (0, 0),
@@ -160,6 +160,13 @@ class Game:
                 self.high_scores.save()
                 self.score_saved = True
             return
+        if self.queued_direction is not None:
+            if self.maze.can_move(
+                self.player.x, self.player.y, self.queued_direction
+            ):
+                self.player.direction = self.queued_direction
+        if self.player.direction is not None:
+            self.move_player(self.player.direction)
         self.collect_items()
         if self.frightened_start is not None:
             elapsed = time.monotonic() - self.frightened_start

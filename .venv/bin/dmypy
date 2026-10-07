@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 #!/goinfre/melmoara/Pacman/.venv/bin/python3
+=======
+#!/goinfre/anbenaay/Pacman/.venv/bin/python3
+>>>>>>> bebb31e (7th_push)
 import sys
 from mypy.dmypy.client import console_entry
 if __name__ == '__main__':

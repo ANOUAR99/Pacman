@@ -33,7 +33,11 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
+<<<<<<< HEAD
 set -gx VIRTUAL_ENV /goinfre/melmoara/Pacman/.venv
+=======
+set -gx VIRTUAL_ENV /goinfre/anbenaay/Pacman/.venv
+>>>>>>> bebb31e (7th_push)
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH
