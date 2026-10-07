@@ -42,6 +42,11 @@ class PacmanUI:
         f_ghost_path = project_root / "src" / "assets" / "f_ghost.png"
         font_path = project_root / "src" / "assets" / "ARCADE_N.TTF"
         self.font = pygame.font.Font(str(font_path), 12)
+        w_ghost_path = project_root / "src" / "assets" / "w_ghost.png"
+        self.w_ghost_img = pygame.transform.scale(
+            pygame.image.load(str(w_ghost_path)).convert_alpha(),
+            (self.cell_size, self.cell_size)
+            )
         self.f_ghost_img = pygame.transform.scale(
             pygame.image.load(str(f_ghost_path)).convert_alpha(),
             (self.cell_size, self.cell_size)
@@ -232,7 +237,12 @@ class PacmanUI:
                 pixel_x = ghost.x * self.cell_size
                 pixel_y = ghost.y * self.cell_size + self.hud_offset
                 if ghost.frightened:
-                    active_img = self.f_ghost_img
+                    elapsed = time.monotonic() - self.game.frightened_start
+                    remaining = self.game.frightened_duration - elapsed
+                    if remaining < 3.0 and (pygame.time.get_ticks() // 200) % 2 == 0:
+                        active_img = self.w_ghost_img
+                    else:
+                        active_img = self.f_ghost_img
                 else:
                     active_img = self.ghost_normal_imgs[i % 4]
                 self.screen.blit(active_img, (pixel_x, pixel_y))
