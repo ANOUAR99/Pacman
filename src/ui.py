@@ -11,7 +11,11 @@ import math
 class PacmanUI:
     def __init__(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((800, 600))
+        self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        screen_info = pygame.display.Info()
+        self.hud_reserved_space = 80
+        self.screen_width = screen_info.current_w
+        self.screen_height = screen_info.current_h
         pygame.display.set_caption("42 Pac-Man")
         self.clock = pygame.time.Clock()
 
@@ -25,17 +29,19 @@ class PacmanUI:
         self.menu_options = ["Start Game", "View Highscores", "Instructions", "Exit"]
         self.selected_index = 0
         self.last_engine_tick = 0
-        self.tick_delay = 200
-        self.hud_offset = 60
+        self.tick_delay = 170
         self.ghost_normal_imgs = []
         project_root = Path(__file__).parent.parent
         colors = ["red", "pink", "cyan", "orange"]
-        
         open_path = project_root / "src" / "assets" / "pacman.png"
         closed_path = project_root / "src" / "assets" / "pacman_closed.png"
         f_ghost_path = project_root / "src" / "assets" / "f_ghost.png"
         font_path = project_root / "src" / "assets" / "ARCADE_N.TTF"
-        self.font = pygame.font.Font(str(font_path), 12)
+        # Base it off a fraction of the screen width, with a minimum fallback
+        self.main_size = min(40, max(16, self.screen_width // 60))
+        self.small_size = min(20, max(10, self.screen_width // 90))
+        self.font = pygame.font.Font(str(font_path), self.main_size)
+        self.small_font = pygame.font.Font(str(font_path), self.small_size)
         w_ghost_path = project_root / "src" / "assets" / "w_ghost.png"
         if len(sys.argv) < 2:
             print("Usage: python3 ui.py <config.json>")
@@ -44,9 +50,22 @@ class PacmanUI:
         raw_text = read_config(config_path)
         clean_text = remove_comments(raw_text)
         self.config = parse_config(clean_text)
-        max_width_cell = 800 // self.config.width
-        max_height_cell = (600 - self.hud_offset) // self.config.height
+        max_width_cell = self.screen_width // self.config.width
+        max_height_cell = (
+            self.screen_height - self.hud_reserved_space
+        ) // self.config.height
+        # We must use the smallest of the two so the maze remains a perfect square grid
         self.cell_size = min(max_width_cell, max_height_cell)
+        maze_pixel_width = self.config.width * self.cell_size
+        maze_pixel_height = self.config.height * self.cell_size
+
+        # Calculate dead space and divide by 2
+        self.left_offset = (self.screen_width - maze_pixel_width) // 2
+        self.top_offset = (self.screen_height - maze_pixel_height) // 2
+
+        # We push the maze down slightly further if the top offset is smaller than our HUD space
+        if self.top_offset < self.hud_reserved_space:
+            self.top_offset = self.hud_reserved_space
         for color in colors:
             path = project_root / "src" / "assets" / f"{color}_ghost.png"
             img = pygame.image.load(str(path)).convert_alpha()
@@ -54,25 +73,26 @@ class PacmanUI:
             self.ghost_normal_imgs.append(img)
         self.w_ghost_img = pygame.transform.scale(
             pygame.image.load(str(w_ghost_path)).convert_alpha(),
-            (self.cell_size, self.cell_size)
-            )
+            (self.cell_size, self.cell_size),
+        )
         self.f_ghost_img = pygame.transform.scale(
             pygame.image.load(str(f_ghost_path)).convert_alpha(),
-            (self.cell_size, self.cell_size)
-            )
+            (self.cell_size, self.cell_size),
+        )
         # Assuming you set up the absolute Path as discussed earlier
         self.pac_open = pygame.transform.scale(
             pygame.image.load(str(open_path)).convert_alpha(),
-            (self.cell_size, self.cell_size)
-            )
+            (self.cell_size, self.cell_size),
+        )
         self.pac_closed = pygame.transform.scale(
             pygame.image.load(str(closed_path)).convert_alpha(),
-            (self.cell_size, self.cell_size)
-            )
+            (self.cell_size, self.cell_size),
+        )
         self.prev_player_pos = (0, 0)
-        self.prev_ghost_pos = {}  # Maps ghost index to (x, y)
+        self.prev_ghost_pos = {}
+        self.active_direction = "E"
         self.queued_direction = None
-    
+
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -82,16 +102,22 @@ class PacmanUI:
                 # Route inputs based on the current state
                 if self.state == "MAIN_MENU":
                     if event.key == pygame.K_DOWN:
-                        self.selected_index = (self.selected_index + 1) % len(self.menu_options)
+                        self.selected_index = (self.selected_index + 1) % len(
+                            self.menu_options
+                        )
                     elif event.key == pygame.K_UP:
-                        self.selected_index = (self.selected_index - 1) % len(self.menu_options)
-                    elif event.key == pygame.K_RETURN:    
+                        self.selected_index = (self.selected_index - 1) % len(
+                            self.menu_options
+                        )
+                    elif event.key == pygame.K_RETURN:
                         if self.selected_index == 0:
                             self.state = "PLAYING"  # Transition state!
                             self.game = Game(self.config)
-                            if hasattr(self.game, 'high_scores'):
+                            if hasattr(self.game, "high_scores"):
                                 self.real_add_score = self.game.high_scores.add_score
-                                self.game.high_scores.add_score = lambda *args, **kwargs: None
+                                self.game.high_scores.add_score = (
+                                    lambda *args, **kwargs: None
+                                )
                         elif self.selected_index == 1:
                             self.state = "HIGHSCORES"
                         elif self.selected_index == 2:
@@ -117,17 +143,16 @@ class PacmanUI:
                 elif self.state in ["GAME_OVER", "VICTORY"]:
                     if event.key == pygame.K_RETURN:
                         self.state = "MAIN_MENU"
-                        if hasattr(self, 'real_add_score'):
+                        if hasattr(self, "real_add_score"):
                             self.real_add_score(self.input_text, self.game.player.score)
-                            self.game.high_scores.save() # Call partner's save method
+                            self.game.high_scores.save()  # Call partner's save method
                         self.input_text = ""  # Reset for next time
                     elif event.key == pygame.K_BACKSPACE:
                         # Slice off the last character
                         self.input_text = self.input_text[:-1]
                     else:
                         if len(self.input_text) < 10:
-                            if event.unicode.isalnum() or\
-                                  event.unicode == " ":
+                            if event.unicode.isalnum() or event.unicode == " ":
                                 self.input_text += event.unicode
                 elif self.state in ["HIGHSCORES", "INSTRUCTIONS"]:
                     if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -140,81 +165,152 @@ class PacmanUI:
         # Route drawing based on the current state
         if self.state == "MAIN_MENU":
             title = self.font.render("42 PAC-MAN", True, (255, 255, 255))
-            self.screen.blit(title, (350, 100))
+            # 1. Ask Pygame to build a bounding box around the text, centered on the screen
+            title_rect = title.get_rect(
+                center=(self.screen_width // 2, self.screen_height // 4)
+            )
+            # 2. Blit using the rect instead of raw coordinates
+            self.screen.blit(title, title_rect)
+            # 3. Apply the same logic to your menu loop
             for i, option in enumerate(self.menu_options):
                 color = (255, 255, 0) if i == self.selected_index else (255, 255, 255)
                 text_surface = self.font.render(option, True, color)
-                y_position = 250 + (i * 50)
-                self.screen.blit(text_surface, (350, y_position))
+                # Space options vertically based on screen height
+                y_pos = (self.screen_height // 2) + (i * (self.main_size + 20))
+                option_rect = text_surface.get_rect(
+                    center=(self.screen_width // 2, y_pos)
+                )
+                self.screen.blit(text_surface, option_rect)
         elif self.state in ["PLAYING", "PAUSED"]:
             grid = self.game.maze.grid
             max_y = self.game.config.height - 1
             max_x = self.game.config.width - 1
             for y, row in enumerate(self.game.maze.grid):
                 for x, cell in enumerate(row):
-                    is_42 = (cell == 15)
+                    is_42 = cell == 15
                     draw_n = bool(cell & 1)
                     draw_e = bool(cell & 2)
                     draw_s = bool(cell & 4)
                     draw_w = bool(cell & 8)
                     if is_42:
                         glow_color = (255, 140, 0)
-                        if y > 0 and grid[y-1][x] == 15:
+                        if y > 0 and grid[y - 1][x] == 15:
                             draw_n = False
-                        if y < max_y and grid[y+1][x] == 15:
+                        if y < max_y and grid[y + 1][x] == 15:
                             draw_s = False
-                        if x < max_x and grid[y][x+1] == 15:
+                        if x < max_x and grid[y][x + 1] == 15:
                             draw_e = False
-                        if x > 0 and grid[y][x-1] == 15:
+                        if x > 0 and grid[y][x - 1] == 15:
                             draw_w = False
                     else:
                         glow_color = (0, 0, 255)  # Arcade Blue
-                        if draw_n and y > 0 and grid[y-1][x] == 15: draw_n = False
-                        if draw_s and y < max_y and grid[y+1][x] == 15: draw_s = False
-                        if draw_e and x < max_x and grid[y][x+1] == 15: draw_e = False
-                        if draw_w and x > 0 and grid[y][x-1] == 15: draw_w = False
+                        if draw_n and y > 0 and grid[y - 1][x] == 15:
+                            draw_n = False
+                        if draw_s and y < max_y and grid[y + 1][x] == 15:
+                            draw_s = False
+                        if draw_e and x < max_x and grid[y][x + 1] == 15:
+                            draw_e = False
+                        if draw_w and x > 0 and grid[y][x - 1] == 15:
+                            draw_w = False
                     core_color = (0, 0, 0)
                     glow_thick = 6
                     core_thick = 2
 
                     rect = pygame.Rect(
-                        x * self.cell_size,
-                        y * self.cell_size + self.hud_offset,
+                        x * self.cell_size + self.left_offset,
+                        y * self.cell_size + self.top_offset,
                         self.cell_size,
-                        self.cell_size
-                        )
+                        self.cell_size,
+                    )
                     if draw_n:
-                        pygame.draw.line(self.screen, glow_color, rect.topleft, rect.topright, glow_thick)
-                        pygame.draw.line(self.screen, core_color, rect.topleft, rect.topright, core_thick)
+                        pygame.draw.line(
+                            self.screen,
+                            glow_color,
+                            rect.topleft,
+                            rect.topright,
+                            glow_thick,
+                        )
+                        pygame.draw.line(
+                            self.screen,
+                            core_color,
+                            rect.topleft,
+                            rect.topright,
+                            core_thick,
+                        )
                     if draw_e:
-                        pygame.draw.line(self.screen, glow_color, rect.topright, rect.bottomright, glow_thick)
-                        pygame.draw.line(self.screen, core_color, rect.topright, rect.bottomright, core_thick)
+                        pygame.draw.line(
+                            self.screen,
+                            glow_color,
+                            rect.topright,
+                            rect.bottomright,
+                            glow_thick,
+                        )
+                        pygame.draw.line(
+                            self.screen,
+                            core_color,
+                            rect.topright,
+                            rect.bottomright,
+                            core_thick,
+                        )
                     if draw_s:
-                        pygame.draw.line(self.screen, glow_color, rect.bottomleft, rect.bottomright, glow_thick)
-                        pygame.draw.line(self.screen, core_color, rect.bottomleft, rect.bottomright, core_thick)
+                        pygame.draw.line(
+                            self.screen,
+                            glow_color,
+                            rect.bottomleft,
+                            rect.bottomright,
+                            glow_thick,
+                        )
+                        pygame.draw.line(
+                            self.screen,
+                            core_color,
+                            rect.bottomleft,
+                            rect.bottomright,
+                            core_thick,
+                        )
                     if draw_w:
-                        pygame.draw.line(self.screen, glow_color, rect.topleft, rect.bottomleft, glow_thick)
-                        pygame.draw.line(self.screen, core_color, rect.topleft, rect.bottomleft, core_thick)
+                        pygame.draw.line(
+                            self.screen,
+                            glow_color,
+                            rect.topleft,
+                            rect.bottomleft,
+                            glow_thick,
+                        )
+                        pygame.draw.line(
+                            self.screen,
+                            core_color,
+                            rect.topleft,
+                            rect.bottomleft,
+                            core_thick,
+                        )
+            gum_radius = max(2, self.cell_size // 10)
             for x, y in self.game.maze.pacgums:
-                center_x = (x * self.cell_size) + (self.cell_size // 2)
-                center_y = (y * self.cell_size) + (self.cell_size // 2) + self.hud_offset
+                center_x = (
+                    (x * self.cell_size) + (self.cell_size // 2) + self.left_offset
+                )
+                center_y = (
+                    (y * self.cell_size) + (self.cell_size // 2) + self.top_offset
+                )
                 pygame.draw.circle(
-                    self.screen,
-                    (255, 255, 255),
-                    (center_x, center_y),
-                    3
-                    )
+                    self.screen, (255, 255, 255), (center_x, center_y), gum_radius
+                )
+            base_super_radius = max(4, self.cell_size // 4)
             for x, y in self.game.maze.super_pacgums:
-                center_x = (x * self.cell_size) + (self.cell_size // 2)
-                center_y = (y * self.cell_size) + (self.cell_size // 2) + self.hud_offset
+                center_x = (
+                    (x * self.cell_size) + (self.cell_size // 2) + self.left_offset
+                )
+                center_y = (
+                    (y * self.cell_size) + (self.cell_size // 2) + self.top_offset
+                )
                 current_time = pygame.time.get_ticks()
-                pulse_radius = 8 + int(2 * math.sin(current_time / 150.0))
+                pulse = int(
+                    (self.cell_size // 10) * math.sin(pygame.time.get_ticks() / 150.0)
+                )
                 pygame.draw.circle(
                     self.screen,
                     (255, 255, 255),
                     (center_x, center_y),
-                    pulse_radius
-                    )
+                    base_super_radius + pulse,
+                )
             for i, ghost in enumerate(self.game.ghosts):
                 current_time = pygame.time.get_ticks()
                 # 1. Calculate fractional progress (0.0 to 1.0)
@@ -230,8 +326,8 @@ class PacmanUI:
                     render_x = old_x + ((new_x - old_x) * progress)
                     render_y = old_y + ((new_y - old_y) * progress)
                 # 4. Final screen coordinates
-                pixel_x = render_x * self.cell_size
-                pixel_y = (render_y * self.cell_size) + self.hud_offset
+                pixel_x = render_x * self.cell_size + self.left_offset
+                pixel_y = (render_y * self.cell_size) + self.top_offset
                 if ghost.frightened:
                     elapsed = time.monotonic() - self.game.frightened_start
                     remaining = self.game.frightened_duration - elapsed
@@ -254,8 +350,8 @@ class PacmanUI:
                 render_x = old_x + ((new_x - old_x) * progress)
                 render_y = old_y + ((new_y - old_y) * progress)
 
-            pixel_x = render_x * self.cell_size
-            pixel_y = (render_y * self.cell_size) + self.hud_offset
+            pixel_x = render_x * self.cell_size + self.left_offset
+            pixel_y = (render_y * self.cell_size) + self.top_offset
             current_time = pygame.time.get_ticks()
             if (current_time // 200) % 2 == 0:
                 current_sprite = self.pac_open
@@ -270,44 +366,81 @@ class PacmanUI:
             else:
                 rotated_sprite = current_sprite
             self.screen.blit(rotated_sprite, (pixel_x, pixel_y))
+            maze_pixel_width = self.game.config.width * self.cell_size
+            hud_y = self.top_offset - (self.hud_reserved_space // 2)
             current_score = self.game.player.score
-            score_surface = self.font.render(f"Score: {current_score}", True, (255, 255, 255))
-            self.screen.blit(score_surface, (20, 10))
+            score_surf = self.small_font.render(
+                f"SCORE: {current_score}", True, (255, 255, 255)
+            )
+            score_rect = score_surf.get_rect(midleft=(self.left_offset, hud_y))
+            self.screen.blit(score_surf, score_rect)
+            center_x = self.left_offset + (maze_pixel_width // 2)
             current_lives = self.game.player.lives
             current_level = self.game.level
-            lives_surface = self.font.render(f"Lives: {current_lives}", True, (255, 255, 255))
-            level_surface = self.font.render(f"Level: {current_level}", True, (255, 255, 255))
-            self.screen.blit(lives_surface, (200, 10))
-            self.screen.blit(level_surface, (350, 10))
+            stats_surf = self.small_font.render(
+                f"LIVES: {current_lives}   LEVEL: {current_level}",
+                True,
+                (255, 255, 255),
+            )
+            stats_rect = stats_surf.get_rect(center=(center_x, hud_y))
+            self.screen.blit(stats_surf, stats_rect)
             elapsed = time.monotonic() - self.game.start_time - self.game.paused_time
             remaining_time = max(0, int(self.game.config.level_max_time - elapsed))
-            time_surface = self.font.render(f"Remaining Time: {remaining_time}", True, (255, 255, 255))
-            self.screen.blit(time_surface, (500, 10))
+            time_surf = self.small_font.render(
+                f"TIME: {remaining_time}", True, (255, 255, 255)
+            )
+            time_rect = time_surf.get_rect(
+                midright=(self.left_offset + maze_pixel_width, hud_y)
+            )
+            self.screen.blit(time_surf, time_rect)
             if self.state == "PAUSED":
                 pause_text = self.font.render("PAUSED", True, (255, 255, 0))
-                self.screen.blit(pause_text, (350, 300))
+                pause_rect = pause_text.get_rect(
+                    center=(self.screen_width // 2, self.screen_height // 2)
+                )
+                self.screen.blit(pause_text, pause_rect)
         elif self.state in ["GAME_OVER", "VICTORY"]:
             if self.state == "VICTORY":
                 victory = self.font.render("VICTORY", True, (0, 0, 255))
-                self.screen.blit(victory, (10, 10))
+                victory_rect = victory.get_rect(
+                    center=(self.screen_width // 2, self.screen_height // 3)
+                )
+                self.screen.blit(victory, victory_rect)
             else:
                 game_over = self.font.render("GAME OVER", True, (255, 0, 0))
-                self.screen.blit(game_over, (350, 250))
-            input_surface = self.font.render(f"Input Text: {self.input_text}", True, (255, 255, 255))
-            self.screen.blit(input_surface, (450, 10))
+                gameover_rect = game_over.get_rect(
+                    center=(self.screen_width // 2, self.screen_height // 3)
+                )
+                self.screen.blit(game_over, gameover_rect)
+            input_surf = self.font.render(
+                f"Input Text: {self.input_text}", True, (255, 255, 255)
+            )
+            input_rect = input_surf.get_rect(
+                center=(self.screen_width // 2, self.screen_height // 2)
+            )
+            self.screen.blit(input_surf, input_rect)
         elif self.state == "HIGHSCORES":
             title = self.font.render("TOP 10 HIGHSCORES", True, (255, 255, 0))
-            self.screen.blit(title, (300, 50))
+            title_rect = title.get_rect(
+                center=(self.screen_width // 2, self.screen_height // 6)
+            )
+            self.screen.blit(title, title_rect)
             hs = HighScore(self.config.highscore_filename)
             hs.load()
+            start_y = self.screen_height // 3
+            row_spacing = self.small_size + 15
             if not hs.scores:
                 msg = self.font.render("No highscores yet!", True, (255, 255, 255))
-                self.screen.blit(msg, (300, 120))
+                msg_rect = msg.get_rect(center=(self.screen_width // 2, start_y))
+                self.screen.blit(msg, msg_rect)
             else:
                 for i, entry in enumerate(hs.scores):
                     score_text = f"{i+1}. {entry.name} - {entry.score} pts"
                     surface = self.font.render(score_text, True, (255, 255, 255))
-                    self.screen.blit(surface, (300, 120 + (i*30)))
+                    score_rect = surface.get_rect(
+                        center=(self.screen_width // 2, start_y + (i * row_spacing))
+                    )
+                    self.screen.blit(surface, score_rect)
         elif self.state == "INSTRUCTIONS":
             pass
         pygame.display.flip()
@@ -326,9 +459,36 @@ class PacmanUI:
                     self.prev_player_pos = (self.game.player.x, self.game.player.y)
                     for i, ghost in enumerate(self.game.ghosts):
                         self.prev_ghost_pos[i] = (ghost.x, ghost.y)
-                    # 2. DISCHARGE BUFFER: Apply the stored keyboard input
+                    # 2. DISCHARGE BUFFER: The Forgiving Cornering System
+                    px, py = self.game.player.x, self.game.player.y
+                    current_cell = self.game.maze.grid[py][px]
+
+                    wall_bits = {"N": 1, "E": 2, "S": 4, "W": 8}
+                    opposites = {"N": "S", "S": "N", "E": "W", "W": "E"}
+
                     if self.queued_direction:
-                        self.game.move_player(self.queued_direction)
+                        turn_mask = wall_bits[self.queued_direction]
+
+                        # MECHANIC 1: Instant 180-Degree Reversals
+                        if self.queued_direction == opposites.get(
+                            self.active_direction
+                        ):
+                            self.active_direction = self.queued_direction
+                            self.queued_direction = None
+
+                        # MECHANIC 2: Standard Open-Intersection Turn
+                        elif (current_cell & turn_mask) == 0:
+                            self.active_direction = self.queued_direction
+                            self.queued_direction = None
+
+                    # 3. APPLY ACTIVE DIRECTION
+                    if self.active_direction:
+                        forward_mask = wall_bits[self.active_direction]
+                        if (current_cell & forward_mask) == 0:
+                            self.game.player.direction = self.active_direction
+                        else:
+                            # We hit a wall. Do NOT clear the active direction, just wait.
+                            pass
                     self.game.update()
                     self.last_engine_tick = current_time
                     if self.game.game_over:
