@@ -15,7 +15,7 @@ class Player:
         self.y = y
         self.lives = lives
         self.score = 0
-        self.direction = "N"
+        self.direction = None
 
     def move(self, maze: Maze, direction: str) -> bool:
         """Move the player if the destination is not blocked."""
@@ -66,4 +66,4 @@ class Player:
         """Reset the player's position after losing a life."""
         self.x = x
         self.y = y
-        self.direction = "N"
+        self.direction = None
