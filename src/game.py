@@ -109,6 +109,7 @@ class Game:
 
             if result == "ghost_defeated":
                 self.player.score += self.config.points_per_ghost
+                ghost.reset_position()
 
             elif result == "player_hit":
                 player_hit = True
