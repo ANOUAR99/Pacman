@@ -25,6 +25,7 @@ class Game:
         self.start_level(self.config.lives, 0, self.config.seed)
         self.ghost_move_delay = 0.25
         self.ghost_detect_range = 5
+        self.player_eaten = False
 
     def start_level(self, lives: int, score: int, new_seed: int) -> None:
         """Initialize the current level."""
@@ -120,6 +121,7 @@ class Game:
                     self.config.width // 2,
                     self.config.height // 2,
                 )
+                self.player_eaten = True
 
     def check_win(self) -> None:
         """Check whether the player has collected all Pac-Gums."""
@@ -198,6 +200,10 @@ class Game:
                 ghost.reset_position()
                 ghost.recover()
                 ghost.eaten_time = None
+        for ghost in self.ghosts:
+            if self.player_eaten:
+                ghost.reset_position()
+        self.player_eaten = False
         self.check_win()
 
         if self.level_won:
