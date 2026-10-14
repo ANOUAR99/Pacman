@@ -496,7 +496,14 @@ class PacmanUI:
                         else:
                             # We hit a wall. Do NOT clear the active direction, just wait.
                             pass
+                    player_lives = self.game.player.lives
                     self.game.update()
+                    if player_lives > self.game.player.lives:
+                        self.active_direction = None
+                        self.queued_direction = None
+                    if self.game.player_eaten:
+                        self.queued_direction = None
+                        self.active_direction = None
                     self.last_engine_tick = current_time
                     if self.game.game_over:
                         self.state = "GAME_OVER"
