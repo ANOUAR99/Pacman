@@ -333,6 +333,8 @@ class PacmanUI:
                     remaining = self.game.frightened_duration - elapsed
                     if remaining < 3.0 and (pygame.time.get_ticks() // 200) % 2 == 0:
                         active_img = self.w_ghost_img
+                    elif ghost.eaten_time:
+                        continue
                     else:
                         active_img = self.f_ghost_img
                 else:
