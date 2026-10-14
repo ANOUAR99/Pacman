@@ -10,14 +10,15 @@ WHEEL = mazegenerator-00001\ \(1\)/mazegenerator-2.1.0-py3-none-any.whl
 
 .PHONY: install run debug clean lint
 
+run: install
+	$(PYTHON_VENV) $(NAME) $(CONFIG)
+
 install:
 	$(PYTHON) -m venv $(VENV)
 	$(PIP) install --upgrade pip
 	$(PIP) install -r requirements.txt
-	$(PIP) install "$(WHEEL)"
-
-run:
-	$(PYTHON_VENV) $(NAME) $(CONFIG)
+#	 make file error 
+# 	$(PIP) install "$(WHEEL)"
 
 debug:
 	$(PYTHON_VENV) -m pdb $(NAME) $(CONFIG)
