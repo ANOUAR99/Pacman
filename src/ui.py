@@ -37,6 +37,7 @@ class PacmanUI:
         closed_path = project_root / "src" / "assets" / "pacman_closed.png"
         f_ghost_path = project_root / "src" / "assets" / "f_ghost.png"
         font_path = project_root / "src" / "assets" / "ARCADE_N.TTF"
+        eyes_path = project_root / "src" / "assets" / "eyes.png"
         # Base it off a fraction of the screen width, with a minimum fallback
         self.main_size = min(40, max(16, self.screen_width // 60))
         self.small_size = min(20, max(10, self.screen_width // 90))
@@ -74,6 +75,10 @@ class PacmanUI:
         self.w_ghost_img = pygame.transform.scale(
             pygame.image.load(str(w_ghost_path)).convert_alpha(),
             (self.cell_size, self.cell_size),
+        )
+        self.eyes_img = pygame.transform.scale(
+            pygame.image.load(str(eyes_path)).convert_alpha(),
+            (self.cell_size, self.cell_size)
         )
         self.f_ghost_img = pygame.transform.scale(
             pygame.image.load(str(f_ghost_path)).convert_alpha(),
@@ -334,7 +339,7 @@ class PacmanUI:
                     if remaining < 3.0 and (pygame.time.get_ticks() // 200) % 2 == 0:
                         active_img = self.w_ghost_img
                     elif ghost.eaten_time:
-                        continue
+                        active_img = self.eyes_img
                     else:
                         active_img = self.f_ghost_img
                 else:
