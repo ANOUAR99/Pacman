@@ -100,12 +100,30 @@ class Game:
 
         self.collect_items()
 
-    def handle_collisions(self) -> None:
+    def handle_collisions(
+        self,
+        previous_player_position: tuple[int, int] | None = None,
+        previous_ghost_positions: list[tuple[int, int]] | None = None,
+    ) -> None:
         """Handle collisions between ghosts and the player."""
         player_hit = False
 
-        for ghost in self.ghosts:
-            result = ghost.handle_collision(self.player)
+        for index, ghost in enumerate(self.ghosts):
+            crossed_paths = False
+
+            if (
+                previous_player_position is not None
+                and previous_ghost_positions is not None
+            ):
+                crossed_paths = (
+                    (self.player.x, self.player.y)
+                    == previous_ghost_positions[index]
+                    and (ghost.x, ghost.y) == previous_player_position
+                    and previous_player_position
+                    != (self.player.x, self.player.y)
+                )
+
+            result = ghost.handle_collision(self.player, crossed_paths)
 
             if result == "ghost_defeated":
                 self.player.score += self.config.points_per_ghost
@@ -163,6 +181,10 @@ class Game:
                 self.high_scores.save()
                 self.score_saved = True
             return
+        previous_player_position = (self.player.x, self.player.y)
+        previous_ghost_positions = [
+            (ghost.x, ghost.y) for ghost in self.ghosts
+        ]
         if self.queued_direction is not None:
             if self.maze.can_move(
                 self.player.x, self.player.y, self.queued_direction
@@ -192,7 +214,10 @@ class Game:
                         self.player.y,
                         self.ghost_detect_range,
                     )
-        self.handle_collisions()
+        self.handle_collisions(
+            previous_player_position,
+            previous_ghost_positions,
+        )
         for ghost in self.ghosts:
             if (
                 ghost.eaten_time is not None
