@@ -78,7 +78,7 @@ class PacmanUI:
         )
         self.eyes_img = pygame.transform.scale(
             pygame.image.load(str(eyes_path)).convert_alpha(),
-            (self.cell_size, self.cell_size)
+            (self.cell_size, self.cell_size),
         )
         self.f_ghost_img = pygame.transform.scale(
             pygame.image.load(str(f_ghost_path)).convert_alpha(),
@@ -496,11 +496,7 @@ class PacmanUI:
                         else:
                             # We hit a wall. Do NOT clear the active direction, just wait.
                             pass
-                    player_lives = self.game.player.lives
                     self.game.update()
-                    if player_lives > self.game.player.lives:
-                        self.active_direction = None
-                        self.queued_direction = None
                     if self.game.player_eaten:
                         self.queued_direction = None
                         self.active_direction = None
