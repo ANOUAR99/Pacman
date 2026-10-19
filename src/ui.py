@@ -97,6 +97,8 @@ class PacmanUI:
         self.prev_ghost_pos = {}
         self.active_direction = "E"
         self.queued_direction = None
+        self.secre_code = [pygame.K_UP, pygame.K_UP, pygame.K_DOWN, pygame.K_DOWN]
+        self.input_buffer = []
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -141,6 +143,13 @@ class PacmanUI:
                         self.queued_direction = "W"
                     elif event.key in (pygame.K_d, pygame.K_RIGHT):
                         self.queued_direction = "E"
+                    self.input_buffer.append(event.key)
+                    if len(self.input_buffer) > len(self.secre_code):
+                        self.input_buffer.pop(0)
+                    if self.input_buffer == self.secre_code:
+                        self.game.player.god_mode = not getattr(self.game.player, 'god_mode', False)
+                        print(f"[SYSTEM] GOD MODE: {self.game.player.god_mode}")
+                        self.input_buffer.clear()
                 elif self.state == "PAUSED":
                     if event.key == pygame.K_ESCAPE:
                         self.state = "PLAYING"
@@ -406,6 +415,9 @@ class PacmanUI:
                     center=(self.screen_width // 2, self.screen_height // 2)
                 )
                 self.screen.blit(pause_text, pause_rect)
+            if getattr(self.game.player, 'god_mode', False):
+                cheat_surface = self.small_font.render("GOD MODE", True, (0, 255, 0))
+                self.screen.blit(cheat_surface, cheat_surface.get_rect(bottomright=(self.screen_width - 20, self.screen_height - 20)))
         elif self.state in ["GAME_OVER", "VICTORY"]:
             if self.state == "VICTORY":
                 victory = self.font.render("VICTORY", True, (0, 0, 255))
@@ -449,7 +461,23 @@ class PacmanUI:
                     )
                     self.screen.blit(surface, score_rect)
         elif self.state == "INSTRUCTIONS":
-            pass
+            title = self.font.render("HOW TO PLAY", True, (0, 255, 255))
+            self.screen.blit(title, title.get_rect(center=(self.screen_width // 2, self.screen_height // 6)))
+            Instructions = [
+                "USE ARROW KEYS TO MOVE",
+                "EAT ALL DOTS TO WIN",
+                "AVOID THE GHOSTS",
+                "SUPER GUMS MAKE GHOSTS EDIBLE",
+                "",
+                "PRESS ESC TO RETURN"
+            ]
+            start_y = self.screen_height // 3
+            row_spacing = self.small_size + 20
+            for i, line in enumerate(Instructions):
+                color = (255, 255, 0) if "ESC" in line else (255, 255, 255)
+                text_surface = self.small_font.render(line, True, color)
+                text_rect = text_surface.get_rect(center=(self.screen_width // 2, start_y + (i*row_spacing)))
+                self.screen.blit(text_surface, text_rect)
         pygame.display.flip()
 
     def quit_game(self):
@@ -496,10 +524,11 @@ class PacmanUI:
                         else:
                             # We hit a wall. Do NOT clear the active direction, just wait.
                             pass
+                    current_lives = self.game.player.lives
                     self.game.update()
-                    if self.game.player_eaten:
-                        self.queued_direction = None
+                    if current_lives > self.game.player.lives:
                         self.active_direction = None
+                        self.queued_direction = None
                     self.last_engine_tick = current_time
                     if self.game.game_over:
                         self.state = "GAME_OVER"
