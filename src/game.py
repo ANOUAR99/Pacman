@@ -129,7 +129,7 @@ class Game:
                 self.player.score += self.config.points_per_ghost
                 ghost.reset_position()
 
-            elif result == "player_hit":
+            elif result == "player_hit" and not self.player.god_mode:
                 player_hit = True
 
         if player_hit:

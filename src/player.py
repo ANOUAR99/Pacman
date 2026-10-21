@@ -16,6 +16,7 @@ class Player:
         self.lives = lives
         self.score = 0
         self.direction = None
+        self.god_mode = False
 
     def move(self, maze: Maze, direction: str) -> bool:
         """Move the player if the destination is not blocked."""
