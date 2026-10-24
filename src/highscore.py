@@ -30,7 +30,7 @@ class HighScore:
     def load(self) -> None:
         """Load high scores from the JSON file."""
         try:
-            loaded_scores = []
+            loaded_scores: list[Score] = []
 
             with open(self.filename, "r") as file:
                 data = json.load(file)

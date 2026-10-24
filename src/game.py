@@ -16,7 +16,7 @@ class Game:
         self.game_over = False
         self.level_won = False
         self.level = 1
-        self.frightened_start = None
+        self.frightened_start: float | None = None
         self.frightened_duration = 10
         self.score_saved = False
         self.high_scores = HighScore(config.highscore_filename)
@@ -177,7 +177,7 @@ class Game:
         current_time = time.monotonic()
         if self.game_over:
             if not self.score_saved:
-                self.high_scores.add_score(self.player.score)
+                self.high_scores.add_score("player", self.player.score)
                 self.high_scores.save()
                 self.score_saved = True
             return
@@ -238,6 +238,6 @@ class Game:
             self.check_timeout()
 
         if self.game_over and not self.score_saved:
-            self.high_scores.add_score(self.player.score)
+            self.high_scores.add_score("player", self.player.score)
             self.high_scores.save()
             self.score_saved = True

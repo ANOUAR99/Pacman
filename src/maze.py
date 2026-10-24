@@ -73,13 +73,3 @@ class Maze:
     def can_move(self, x: int, y: int, direction: str) -> bool:
         """Return True if movement is possible in the given direction."""
         return not self.is_wall(x, y, direction)
-
-
-if __name__ == "__main__":
-    maze = Maze(20, 15, 42)
-    print(maze.grid)
-    print("Entry:", maze.entry)
-    print("Exit:", maze.exit)
-    print("Path:", maze.shortest_path)
-    print("Can move North:", maze.can_move(0, 0, "N"))
-    print("Can move East:", maze.can_move(0, 0, "E"))

@@ -15,7 +15,7 @@ class Player:
         self.y = y
         self.lives = lives
         self.score = 0
-        self.direction = None
+        self.direction: str | None = None
         self.god_mode = False
 
     def move(self, maze: Maze, direction: str) -> bool:

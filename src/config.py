@@ -50,6 +50,10 @@ def parse_config(config: str) -> Config | None:
     except ValidationError as error:
         for error_info in error.errors():
             field = error_info["loc"][0]
+
+            if not isinstance(field, str):
+                continue
+
             default = Config.model_fields[field].default
 
             print(f"Invalid field: {field}")
