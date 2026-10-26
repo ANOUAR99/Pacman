@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 import pygame
-from src.config import parse_config, read_config, remove_comments
+from src.config import Config, parse_config, read_config, remove_comments
 from src.game import Game
 from src.highscore import HighScore
 
@@ -27,7 +27,7 @@ class PacmanUI:
         the sliding window buffers for cheat codes.
         """
         pygame.init()
-        self.screen: pygame.Surface = pygame.display.set_mode(
+        self.screen: pygame.surface.Surface = pygame.display.set_mode(
             (0, 0), pygame.FULLSCREEN
         )
         screen_info = pygame.display.Info()
@@ -98,8 +98,11 @@ class PacmanUI:
         config_path: str = sys.argv[1]
         raw_text: str = read_config(config_path)
         clean_text: str = remove_comments(raw_text)
-        self.config = parse_config(clean_text)
-
+        temp_config = parse_config(clean_text)
+        if temp_config is None:
+            print("[SYSTEM ERROR] Failed to parse config file")
+            sys.exit(1)
+        self.config: Config = temp_config
         max_width_cell = self.screen_width // self.config.width
         max_height_cell = (
             self.screen_height - self.hud_reserved_space
@@ -115,30 +118,30 @@ class PacmanUI:
             self.top_offset = self.hud_reserved_space
 
         # Image Loading & Scaling
-        self.ghost_normal_imgs: List[pygame.Surface] = []
+        self.ghost_normal_imgs: List[pygame.surface.Surface] = []
         for color in colors:
             path = project_root / "src" / "assets" / f"{color}_ghost.png"
             img = pygame.image.load(str(path)).convert_alpha()
             img = pygame.transform.scale(img, (self.cell_size, self.cell_size))
             self.ghost_normal_imgs.append(img)
 
-        self.w_ghost_img: pygame.Surface = pygame.transform.scale(
+        self.w_ghost_img: pygame.surface.Surface = pygame.transform.scale(
             pygame.image.load(str(w_ghost_path)).convert_alpha(),
             (self.cell_size, self.cell_size),
         )
-        self.eyes_img: pygame.Surface = pygame.transform.scale(
+        self.eyes_img: pygame.surface.Surface = pygame.transform.scale(
             pygame.image.load(str(eyes_path)).convert_alpha(),
             (self.cell_size, self.cell_size),
         )
-        self.f_ghost_img: pygame.Surface = pygame.transform.scale(
+        self.f_ghost_img: pygame.surface.Surface = pygame.transform.scale(
             pygame.image.load(str(f_ghost_path)).convert_alpha(),
             (self.cell_size, self.cell_size),
         )
-        self.pac_open: pygame.Surface = pygame.transform.scale(
+        self.pac_open: pygame.surface.Surface = pygame.transform.scale(
             pygame.image.load(str(open_path)).convert_alpha(),
             (self.cell_size, self.cell_size),
         )
-        self.pac_closed: pygame.Surface = pygame.transform.scale(
+        self.pac_closed: pygame.surface.Surface = pygame.transform.scale(
             pygame.image.load(str(closed_path)).convert_alpha(),
             (self.cell_size, self.cell_size),
         )
@@ -429,7 +432,12 @@ class PacmanUI:
                 pixel_y = int((render_y * self.cell_size) + self.top_offset)
 
                 if ghost.frightened:
-                    elapsed = time.monotonic() - self.game.frightened_start
+                    p_time = (
+                        self.game.paused_time
+                        if self.game.paused_time is not None
+                        else 0.0
+                    )
+                    elapsed = time.monotonic() - self.game.start_time - p_time
                     remaining = self.game.frightened_duration - elapsed
                     if remaining < 3.0 and (current_time // 200) % 2 == 0:
                         active_img = self.w_ghost_img
