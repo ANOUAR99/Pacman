@@ -213,10 +213,16 @@ class PacmanUI:
                         self.input_buffer.clear()
 
                 elif self.state == "PAUSED" and self.game is not None:
-                    if event.key == pygame.K_ESCAPE:
-                        self.state = "PLAYING"
-                        self.game.resume()
-
+                    if event.key == pygame.K_DOWN:
+                        self.selected_index = (self.selected_index + 1) % 2
+                    elif event.key == pygame.K_UP:
+                        self.selected_index = (self.selected_index - 1) % 2
+                    elif event.key == pygame.K_RETURN:
+                        if self.selected_index == 0:
+                            self.state = "PLAYING"
+                            self.game.resume()
+                        elif self.selected_index == 1:
+                            self.state = "MAIN_MENU"
                 elif self.state in ["GAME_OVER", "VICTORY"]:
                     if event.key == pygame.K_RETURN:
                         self.state = "MAIN_MENU"
@@ -437,7 +443,12 @@ class PacmanUI:
                         if self.game.paused_time is not None
                         else 0.0
                     )
-                    elapsed = time.monotonic() - self.game.start_time - p_time
+                    if self.game.frightened_start:
+                        elapsed = (
+                            time.monotonic()
+                            - self.game.frightened_start
+                            - p_time
+                        )
                     remaining = self.game.frightened_duration - elapsed
                     if remaining < 3.0 and (current_time // 200) % 2 == 0:
                         active_img = self.w_ghost_img
@@ -512,11 +523,27 @@ class PacmanUI:
             self.screen.blit(time_surf, time_rect)
 
             if self.state == "PAUSED":
-                pause_text = self.font.render("PAUSED", True, (255, 255, 0))
-                pause_rect = pause_text.get_rect(
-                    center=(self.screen_width // 2, self.screen_height // 2)
+                self.screen.fill((0, 0, 0))
+                title = self.font.render("PAUSE MENU", True, (255, 255, 255))
+                title_rect = title.get_rect(
+                    center=(self.screen_width // 2, self.screen_height // 4)
                 )
-                self.screen.blit(pause_text, pause_rect)
+                self.screen.blit(title, title_rect)
+                pause_menu = ["RESUME", "RETURN TO MAIN MENU"]
+                for i, option in enumerate(pause_menu):
+                    color = (
+                        (0, 255, 255)
+                        if i == self.selected_index
+                        else (255, 255, 255)
+                    )
+                    text_surface = self.font.render(option, True, color)
+                    y_pos = (self.screen_height // 2) + (
+                        i * (self.main_size + 20)
+                    )
+                    option_rect = text_surface.get_rect(
+                        center=(self.screen_width // 2, y_pos)
+                    )
+                    self.screen.blit(text_surface, option_rect)
 
             if getattr(player, "god_mode", False):
                 cheat_surf = self.small_font.render(
