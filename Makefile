@@ -6,26 +6,41 @@ VENV = .venv
 PIP = $(VENV)/bin/pip
 PYTHON_VENV = $(VENV)/bin/python
 
-.PHONY: install run debug clean lint
-
-run: install
-	$(PYTHON_VENV) $(NAME) $(CONFIG)
+all: run
 
 install:
 	$(PYTHON) -m venv $(VENV)
 	$(PIP) install --upgrade pip
 	$(PIP) install -r requirements.txt
 
-debug:
+run: install
+	@echo "Starting Pac-Man..."
+	$(PYTHON_VENV) $(NAME) $(CONFIG)
+
+debug: install
 	$(PYTHON_VENV) -m pdb $(NAME) $(CONFIG)
 
 clean:
-	rm -rf $(VENV)
 	rm -rf .pytest_cache
 	rm -rf .mypy_cache
 	rm -rf __pycache__
-	rm -rf src/__pycache__
+	find . -type d -name "__pycache__" -exec rm -rf {} +
 
-lint:
+lint: install
+	@echo "Running Flake8..."
 	$(PYTHON_VENV) -m flake8 .
-	$(PYTHON_VENV) -m mypy .
+	@echo "Running strict Mypy..."
+	$(PYTHON_VENV) -m mypy --warn-return-any\
+	 --warn-unused-ignores --ignore-missing-imports\
+	  --disallow-untyped-defs --check-untyped-defs .
+
+lint-strict: install
+	$(PYTHON_VENV) -m flake8 .
+	$(PYTHON_VENV) -m mypy --strict .
+
+fclean: clean
+	rm -rf $(VENV)
+
+re: fclean all
+
+.PHONY: all install run debug clean lint lint-strict fclean re
