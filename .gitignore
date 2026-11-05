@@ -8,6 +8,3 @@ __pycache__/
 *.pyc
 .mypy_cache/
 .pytest_cache/
-
-# OS Files
-.DS_Store
