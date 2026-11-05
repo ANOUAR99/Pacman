@@ -22,7 +22,7 @@ class Ghost:
         """Return True if the ghost occupies the player's position."""
         return self.x == player_x and self.y == player_y
 
-    def handle_collision(self, player: Player, crossed) -> str:
+    def handle_collision(self, player: Player, crossed: bool) -> str:
         """Handle a collision with the player."""
         if not self.collides_with(player.x, player.y) and not crossed:
             return "none"
