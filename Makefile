@@ -36,7 +36,7 @@ clean:
 lint: install
 	@echo "Running Flake8..."
 	@$(PYTHON_VENV) -m flake8 src/
-	@echo "Running strict Mypy..."
+	@echo "Running Mypy..."
 	@$(PYTHON_VENV) -m mypy --warn-return-any\
 	 --warn-unused-ignores --ignore-missing-imports\
 	  --disallow-untyped-defs --check-untyped-defs\
