@@ -436,8 +436,13 @@ class PacmanUI:
 
                 pixel_x = int(render_x * self.cell_size + self.left_offset)
                 pixel_y = int((render_y * self.cell_size) + self.top_offset)
-
-                if ghost.frightened:
+                if (
+                    ghost.eaten_time
+                    and current_time - ghost.eaten_time
+                    <= self.game.ghost_respawn_delay
+                ):
+                    active_img = self.eyes_img
+                elif ghost.frightened:
                     p_time = (
                         self.game.paused_time
                         if self.game.paused_time is not None
@@ -452,8 +457,7 @@ class PacmanUI:
                     remaining = self.game.frightened_duration - elapsed
                     if remaining < 3.0 and (current_time // 200) % 2 == 0:
                         active_img = self.w_ghost_img
-                    elif ghost.eaten_time:
-                        active_img = self.eyes_img
+
                     else:
                         active_img = self.f_ghost_img
                 else:
