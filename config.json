@@ -1,8 +1,8 @@
 {
     "highscore_filename": "highscores.json",
     "lives": 3,
-    "width": 52,
-    "height": 19,
+    "width": 18,
+    "height": 15,
     "pacgum": 10,
     "points_per_pacgum": 10,
     "points_per_super_pacgum": 50,
