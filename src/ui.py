@@ -669,6 +669,10 @@ class PacmanUI:
             self.handle_events()
             if self.state == "PLAYING" and self.game is not None:
                 current_time = pygame.time.get_ticks()
+                elapsed = time.monotonic() - self.game.start_time
+                if elapsed < 0.001:
+                    self.active_direction = None
+                    self.queued_direction = None
                 if current_time - self.last_engine_tick > self.tick_delay:
                     self.prev_player_pos = (
                         float(self.game.player.x),
