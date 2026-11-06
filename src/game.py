@@ -30,6 +30,8 @@ class Game:
     def start_level(self, lives: int, score: int, new_seed: int) -> None:
         """Initialize the current level."""
         player_x = self.config.width // 2
+        if self.config.width % 2 == 0:
+            player_x -= 1
         player_y = self.config.height // 2
 
         self.maze = Maze(
@@ -100,6 +102,14 @@ class Game:
 
         self.collect_items()
 
+    def reset(self):
+        width = self.config.width // 2
+        height = self.config.height // 2
+        if self.config.width % 2 == 0:
+            return self.player.reset_position(width - 1, height)
+        else:
+            return self.player.reset_position(width, height)
+
     def handle_collisions(
         self,
         previous_player_position: tuple[int, int] | None = None,
@@ -136,10 +146,7 @@ class Game:
             if self.player.lives == 0:
                 self.game_over = True
             else:
-                self.player.reset_position(
-                    self.config.width // 2,
-                    self.config.height // 2,
-                )
+                self.reset()
                 self.player_eaten = True
 
     def check_win(self) -> None:
