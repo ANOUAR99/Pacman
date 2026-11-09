@@ -1,4 +1,6 @@
 from mazegenerator import MazeGenerator
+from src.config import Config
+import random
 
 
 class Maze:
@@ -10,9 +12,11 @@ class Maze:
         height: int,
         seed: int,
         player_start: tuple[int, int],
+        config: Config,
     ) -> None:
         """Generate a maze with the given dimensions and seed."""
         generator = MazeGenerator(size=(width, height), seed=seed)
+        self.config = config
         self.grid = generator.maze
         self.entry = generator.maze_entry
         self.exit = generator.maze_exit
@@ -25,6 +29,8 @@ class Maze:
 
     def _place_pacgums(self) -> None:
         """Place Pac-Gums on walkable cells."""
+        nb_pacgum = self.config.pacgums
+        valid_pac = []
         for y, row in enumerate(self.grid):
             for x, cell in enumerate(row):
                 position = (x, y)
@@ -41,7 +47,12 @@ class Maze:
                 if position == self.player_start:
                     continue
 
-                self.pacgums.add(position)
+                valid_pac.append(position)
+        if not valid_pac:
+            return
+        positions = random.sample(valid_pac, nb_pacgum)
+        for pos in positions:
+            self.pacgums.add(pos)
 
     def _place_super_pacgums(self) -> None:
         """Place four Super Pac-Gums in the maze corners."""

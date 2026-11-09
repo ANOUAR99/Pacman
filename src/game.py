@@ -39,6 +39,7 @@ class Game:
             height=self.config.height,
             seed=new_seed,
             player_start=(player_x, player_y),
+            config=self.config,
         )
 
         self.player = Player(
@@ -102,7 +103,7 @@ class Game:
 
         self.collect_items()
 
-    def reset(self):
+    def reset(self) -> None:
         width = self.config.width // 2
         height = self.config.height // 2
         if self.config.width % 2 == 0:

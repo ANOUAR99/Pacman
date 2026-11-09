@@ -9,6 +9,7 @@ class Config(BaseModel):
     width: int = Field(default=7, ge=5)
     height: int = Field(default=5, ge=5)
     lives: int = Field(default=3, ge=1)
+    pacgums: int = Field(default=42, ge=1)
     points_per_pacgum: int = Field(default=10, ge=1)
     points_per_super_pacgum: int = Field(default=50, ge=1)
     points_per_ghost: int = Field(default=200, ge=1)

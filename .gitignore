@@ -2,6 +2,7 @@
 .venv/
 venv/
 env/
+.vscode/
 
 # Python Cache
 __pycache__/
@@ -11,3 +12,4 @@ __pycache__/
 
 # Highscore
 highscores.json
+
