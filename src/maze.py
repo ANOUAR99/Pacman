@@ -50,6 +50,8 @@ class Maze:
                 valid_pac.append(position)
         if not valid_pac:
             return
+        if len(valid_pac) < nb_pacgum:
+            nb_pacgum = len(valid_pac)
         positions = random.sample(valid_pac, nb_pacgum)
         for pos in positions:
             self.pacgums.add(pos)

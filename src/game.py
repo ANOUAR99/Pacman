@@ -144,6 +144,7 @@ class Game:
                 player_hit = True
 
         if player_hit:
+            self.player.lose_life()
             if self.player.lives == 0:
                 self.game_over = True
             else:
@@ -222,6 +223,7 @@ class Game:
                         self.player.y,
                         self.ghost_detect_range,
                     )
+
         self.handle_collisions(
             previous_player_position,
             previous_ghost_positions,

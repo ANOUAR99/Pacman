@@ -31,7 +31,6 @@ class Ghost:
             self.eaten_time = time.monotonic()
             return "ghost_defeated"
 
-        player.lose_life()
         return "player_hit"
 
     def move(self, maze: Maze, direction: str) -> bool:
