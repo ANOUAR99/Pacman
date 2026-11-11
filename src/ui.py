@@ -80,6 +80,7 @@ class PacmanUI:
         eyes_path: Path = project_root / "src" / "assets" / "eyes.png"
         w_ghost_path: Path = project_root / "src" / "assets" / "w_ghost.png"
         cherry_path: Path = project_root / "src" / "assets" / "cherry.png"
+        bg_path: Path = project_root / "src" / "assets" / "bg.jpeg"
         # Fonts
         self.main_size: int = min(40, max(16, self.screen_width // 60))
         self.small_size: int = min(20, max(10, self.screen_width // 90))
@@ -178,6 +179,10 @@ class PacmanUI:
             )
             self.pause_bg: pygame.surface.Surface = pygame.transform.scale(
                 pygame.image.load(str(pause_bg_path)).convert(),
+                (self.screen_width, self.screen_height),
+            )
+            self.bg: pygame.surface.Surface = pygame.transform.scale(
+                pygame.image.load(str(bg_path)).convert(),
                 (self.screen_width, self.screen_height),
             )
         except FileNotFoundError as e:
@@ -296,7 +301,7 @@ class PacmanUI:
             self.screen.blit(self.menu_bg, (0, 0))
             title = self.font.render("42 PAC-MAN", True, (255, 255, 0))
             title_rect = title.get_rect(
-                center=(self.screen_width // 2, self.screen_height // 3)
+                center=(self.screen_width // 2, self.screen_height // 2.6)
             )
             self.screen.blit(title, title_rect)
             for i, option in enumerate(self.menu_options):
@@ -625,9 +630,10 @@ class PacmanUI:
             self.screen.blit(input_surf, input_rect)
 
         elif self.state == "HIGHSCORES":
+            self.screen.blit(self.bg, (0, 0))
             title = self.font.render("TOP 10 HIGHSCORES", True, (255, 255, 0))
             title_rect = title.get_rect(
-                center=(self.screen_width // 2, self.screen_height // 6)
+                center=(self.screen_width // 2, self.screen_height // 4)
             )
             self.screen.blit(title, title_rect)
 
@@ -659,11 +665,12 @@ class PacmanUI:
                     self.screen.blit(surface, score_rect)
 
         elif self.state == "INSTRUCTIONS":
+            self.screen.blit(self.bg, (0, 0))
             title = self.font.render("HOW TO PLAY", True, (0, 255, 255))
             self.screen.blit(
                 title,
                 title.get_rect(
-                    center=(self.screen_width // 2, self.screen_height // 6)
+                    center=(self.screen_width // 2, self.screen_height // 4)
                 ),
             )
             instructions_list = [
