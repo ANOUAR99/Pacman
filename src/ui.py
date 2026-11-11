@@ -72,15 +72,14 @@ class PacmanUI:
         # Assets & Paths
         project_root: Path = Path(__file__).parent.parent
         colors: List[str] = ["red", "pink", "cyan", "orange"]
-        open_path: Path = project_root / "src" / "assets" / "pacman.png"
-        closed_path: Path = (
-            project_root / "src" / "assets" / "pacman_closed.png"
-        )
+        open_path: Path = project_root / "src" / "assets" / "open1.png"
+        closed_path: Path = project_root / "src" / "assets" / "closed1.png"
+        half_path: Path = project_root / "src" / "assets" / "half1.png"
         f_ghost_path: Path = project_root / "src" / "assets" / "f_ghost.png"
         font_path: Path = project_root / "src" / "assets" / "ARCADE_N.TTF"
         eyes_path: Path = project_root / "src" / "assets" / "eyes.png"
         w_ghost_path: Path = project_root / "src" / "assets" / "w_ghost.png"
-
+        cherry_path: Path = project_root / "src" / "assets" / "cherry.png"
         # Fonts
         self.main_size: int = min(40, max(16, self.screen_width // 60))
         self.small_size: int = min(20, max(10, self.screen_width // 90))
@@ -129,6 +128,10 @@ class PacmanUI:
             pygame.image.load(str(w_ghost_path)).convert_alpha(),
             (self.cell_size, self.cell_size),
         )
+        self.cherry: pygame.surface.Surface = pygame.transform.scale(
+            pygame.image.load(str(cherry_path)).convert_alpha(),
+            (self.cell_size, self.cell_size),
+        )
         self.eyes_img: pygame.surface.Surface = pygame.transform.scale(
             pygame.image.load(str(eyes_path)).convert_alpha(),
             (self.cell_size, self.cell_size),
@@ -145,6 +148,41 @@ class PacmanUI:
             pygame.image.load(str(closed_path)).convert_alpha(),
             (self.cell_size, self.cell_size),
         )
+        self.pac_half: pygame.surface.Surface = pygame.transform.scale(
+            pygame.image.load(str(half_path)).convert_alpha(),
+            (self.cell_size, self.cell_size),
+        )
+        self.pac_frames = [
+            self.pac_open,
+            self.pac_half,
+            self.pac_closed,
+            self.pac_half,
+        ]
+        self.pac_sprites = {
+            "N": [pygame.transform.rotate(f, 90) for f in self.pac_frames],
+            "W": [pygame.transform.rotate(f, 180) for f in self.pac_frames],
+            "S": [pygame.transform.rotate(f, 270) for f in self.pac_frames],
+            "E": self.pac_frames,
+        }
+        game_over_path: Path = project_root / "src" / "assets" / "gameover.jpg"
+        pause_bg_path: Path = project_root / "src" / "assets" / "pause.jpeg"
+        menu_bg_path: Path = project_root / "src" / "assets" / "main.jpeg"
+        try:
+            self.game_over_bg: pygame.surface.Surface = pygame.transform.scale(
+                pygame.image.load(str(game_over_path)).convert(),
+                (self.screen_width, self.screen_height),
+            )
+            self.menu_bg: pygame.surface.Surface = pygame.transform.scale(
+                pygame.image.load(str(menu_bg_path)).convert(),
+                (self.screen_width, self.screen_height),
+            )
+            self.pause_bg: pygame.surface.Surface = pygame.transform.scale(
+                pygame.image.load(str(pause_bg_path)).convert(),
+                (self.screen_width, self.screen_height),
+            )
+        except FileNotFoundError as e:
+            print(f"[SYSTEM ERROR] Failed to load backdrop: {e}")
+            sys.exit(1)
 
     def handle_events(self) -> None:
         """
@@ -255,23 +293,29 @@ class PacmanUI:
         self.screen.fill((0, 0, 0))
 
         if self.state == "MAIN_MENU":
-            title = self.font.render("42 PAC-MAN", True, (255, 255, 255))
+            self.screen.blit(self.menu_bg, (0, 0))
+            title = self.font.render("42 PAC-MAN", True, (255, 255, 0))
             title_rect = title.get_rect(
-                center=(self.screen_width // 2, self.screen_height // 4)
+                center=(self.screen_width // 2, self.screen_height // 3)
             )
             self.screen.blit(title, title_rect)
             for i, option in enumerate(self.menu_options):
-                color = (
-                    (255, 255, 0)
-                    if i == self.selected_index
-                    else (255, 255, 255)
-                )
+                color = (255, 255, 255)
                 text_surface = self.font.render(option, True, color)
                 y_pos = (self.screen_height // 2) + (i * (self.main_size + 20))
                 option_rect = text_surface.get_rect(
                     center=(self.screen_width // 2, y_pos)
                 )
                 self.screen.blit(text_surface, option_rect)
+                if i == self.selected_index:
+                    padding = 15
+                    cursor_rect = self.cherry.get_rect(
+                        midright=(
+                            option_rect.left - padding,
+                            option_rect.centery,
+                        )
+                    )
+                    self.screen.blit(self.cherry, cursor_rect)
 
         elif self.state in ["PLAYING", "PAUSED"]:
             if self.game is None:
@@ -478,21 +522,20 @@ class PacmanUI:
 
             px_x = int(p_ren_x * self.cell_size + self.left_offset)
             px_y = int((p_ren_y * self.cell_size) + self.top_offset)
-
-            if (current_time // 200) % 2 == 0:
-                current_sprite = self.pac_open
+            is_moving = (p_new_x != p_old_x) or (p_new_y != p_old_y)
+            direction = player.direction if player.direction else "E"
+            direction_frames = self.pac_sprites.get(direction, self.pac_frames)
+            if not is_moving:
+                current_sprite = direction_frames[0]
             else:
-                current_sprite = self.pac_closed
-
-            if player.direction == "N":
-                rotated_sprite = pygame.transform.rotate(current_sprite, 90)
-            elif player.direction == "W":
-                rotated_sprite = pygame.transform.rotate(current_sprite, 180)
-            elif player.direction == "S":
-                rotated_sprite = pygame.transform.rotate(current_sprite, 270)
-            else:
-                rotated_sprite = current_sprite
-            self.screen.blit(rotated_sprite, (px_x, px_y))
+                wave = math.sin(pygame.time.get_ticks() * 0.02)
+                if wave > 0.4:
+                    current_sprite = direction_frames[0]
+                elif wave < -0.4:
+                    current_sprite = direction_frames[2]
+                else:
+                    current_sprite = direction_frames[1]
+            self.screen.blit(current_sprite, (px_x, px_y))
 
             maze_pixel_width = self.game.config.width * self.cell_size
             hud_y = self.top_offset - (self.hud_reserved_space // 2)
@@ -527,7 +570,7 @@ class PacmanUI:
             self.screen.blit(time_surf, time_rect)
 
             if self.state == "PAUSED":
-                self.screen.fill((0, 0, 0))
+                self.screen.blit(self.pause_bg, (0, 0))
                 title = self.font.render("PAUSE MENU", True, (255, 255, 255))
                 title_rect = title.get_rect(
                     center=(self.screen_width // 2, self.screen_height // 4)
@@ -565,23 +608,19 @@ class PacmanUI:
 
         elif self.state in ["GAME_OVER", "VICTORY"]:
             if self.state == "VICTORY":
+                self.screen.blit(self.menu_bg, (0, 0))
                 victory = self.font.render("VICTORY", True, (0, 0, 255))
                 victory_rect = victory.get_rect(
                     center=(self.screen_width // 2, self.screen_height // 3)
                 )
                 self.screen.blit(victory, victory_rect)
             else:
-                game_over = self.font.render("GAME OVER", True, (255, 0, 0))
-                gameover_rect = game_over.get_rect(
-                    center=(self.screen_width // 2, self.screen_height // 3)
-                )
-                self.screen.blit(game_over, gameover_rect)
-
+                self.screen.blit(self.game_over_bg, (0, 0))
             input_surf = self.font.render(
                 f"Input Text: {self.input_text}", True, (255, 255, 255)
             )
             input_rect = input_surf.get_rect(
-                center=(self.screen_width // 2, self.screen_height // 2)
+                center=(self.screen_width // 2, self.screen_height // 3)
             )
             self.screen.blit(input_surf, input_rect)
 
