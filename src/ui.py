@@ -670,7 +670,7 @@ class PacmanUI:
             if self.state == "PLAYING" and self.game is not None:
                 current_time = pygame.time.get_ticks()
                 elapsed = time.monotonic() - self.game.start_time
-                if elapsed < 0.001:
+                if elapsed < 0.1:
                     self.active_direction = None
                     self.queued_direction = None
                 if current_time - self.last_engine_tick > self.tick_delay:
@@ -719,7 +719,6 @@ class PacmanUI:
                         self.state = "GAME_OVER"
                     elif self.game.level_won:
                         self.state = "VICTORY"
-
             self.render()
             self.clock.tick(60)
 
