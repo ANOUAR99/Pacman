@@ -71,7 +71,13 @@ class PacmanUI:
 
         # Assets & Paths
         project_root: Path = Path(__file__).parent.parent
-        colors: List[str] = ["red", "pink", "cyan", "orange"]
+        colors: List[str] = ["red", "pink", "green", "orange"]
+        dir_map: Dict[str, str] = {
+            "N": "up",
+            "S": "down",
+            "W": "left",
+            "E": "right",
+        }
         open_path: Path = project_root / "src" / "assets" / "open1.png"
         closed_path: Path = project_root / "src" / "assets" / "closed1.png"
         half_path: Path = project_root / "src" / "assets" / "half1.png"
@@ -120,10 +126,18 @@ class PacmanUI:
         # Image Loading & Scaling
         self.ghost_normal_imgs: List[pygame.surface.Surface] = []
         for color in colors:
-            path = project_root / "src" / "assets" / f"{color}_ghost.png"
-            img = pygame.image.load(str(path)).convert_alpha()
-            img = pygame.transform.scale(img, (self.cell_size, self.cell_size))
-            self.ghost_normal_imgs.append(img)
+            color_sprites: Dict[str, pygame.surface.Surface] = {}
+            for cardinal, file_suffix in dir_map.items():
+                path = project_root / "src" / "assets" / f"{color}_{file_suffix}.png"
+                try:        
+                    img = pygame.image.load(str(path)).convert_alpha()
+                    color_sprites[cardinal] = pygame.transform.scale(
+                        img, (self.cell_size, self.cell_size)
+                    )
+                except FileNotFoundError as err:
+                    print(f"[SYSTEM ERROR] Missing sprite {path}: {err}")
+                    sys.exit(1)
+            self.ghost_normal_imgs.append(color_sprites)
 
         self.w_ghost_img: pygame.surface.Surface = pygame.transform.scale(
             pygame.image.load(str(w_ghost_path)).convert_alpha(),
@@ -141,29 +155,32 @@ class PacmanUI:
             pygame.image.load(str(f_ghost_path)).convert_alpha(),
             (self.cell_size, self.cell_size),
         )
-        self.pac_open: pygame.surface.Surface = pygame.transform.scale(
-            pygame.image.load(str(open_path)).convert_alpha(),
-            (self.cell_size, self.cell_size),
-        )
-        self.pac_closed: pygame.surface.Surface = pygame.transform.scale(
-            pygame.image.load(str(closed_path)).convert_alpha(),
-            (self.cell_size, self.cell_size),
-        )
-        self.pac_half: pygame.surface.Surface = pygame.transform.scale(
-            pygame.image.load(str(half_path)).convert_alpha(),
-            (self.cell_size, self.cell_size),
-        )
-        self.pac_frames = [
-            self.pac_open,
-            self.pac_half,
-            self.pac_closed,
-            self.pac_half,
+        mouth_steps: List[str] = [
+            "wide", "very", "open", "quite", "halopen",
+            "half", "partly", "almost", "sliver", "closed",
         ]
-        self.pac_sprites = {
-            "N": [pygame.transform.rotate(f, 90) for f in self.pac_frames],
-            "W": [pygame.transform.rotate(f, 180) for f in self.pac_frames],
-            "S": [pygame.transform.rotate(f, 270) for f in self.pac_frames],
-            "E": self.pac_frames,
+        base_frames: List[pygame.surface.Surface] = []
+
+        for step in mouth_steps:
+            img_path: Path = project_root / "src" / "assets" / f"pacman_{step}.png"
+            try:
+                raw_img = pygame.image.load(str(img_path)).convert_alpha()
+                scaled_img = pygame.transform.scale(
+                    raw_img, (self.cell_size, self.cell_size)
+                )
+                base_frames.append(scaled_img)
+            except (pygame.error, FileNotFoundError) as err:
+                print(f"[SYSTEM ERROR] Missing Pac-Man asset {img_path}: {err}")
+                sys.exit(1)
+        hold_closed: List[pygame.surface.Surface] = [base_frames[-1]] * 3
+        ping_pong: List[pygame.surface.Surface] = (
+            base_frames + hold_closed + base_frames[-2:0:-1]
+        )
+        self.pac_sprites: Dict[str, List[pygame.surface.Surface]] = {
+            "E": ping_pong,
+            "N": [pygame.transform.rotate(f, 90) for f in ping_pong],
+            "W": [pygame.transform.rotate(f, 180) for f in ping_pong],
+            "S": [pygame.transform.rotate(f, 270) for f in ping_pong],
         }
         game_over_path: Path = project_root / "src" / "assets" / "gameover.jpg"
         pause_bg_path: Path = project_root / "src" / "assets" / "pause.jpeg"
@@ -188,6 +205,7 @@ class PacmanUI:
         except FileNotFoundError as e:
             print(f"[SYSTEM ERROR] Failed to load backdrop: {e}")
             sys.exit(1)
+        
 
     def handle_events(self) -> None:
         """
@@ -510,7 +528,9 @@ class PacmanUI:
                     else:
                         active_img = self.f_ghost_img
                 else:
-                    active_img = self.ghost_normal_imgs[i % 4]
+                    ghost_dir = getattr(ghost, "direction", "E") or "E"
+                    color_dict = self.ghost_normal_imgs[i % 4]
+                    active_img = color_dict.get(ghost_dir, color_dict["E"])
                 self.screen.blit(active_img, (pixel_x, pixel_y))
 
             player = self.game.player
@@ -527,20 +547,16 @@ class PacmanUI:
 
             px_x = int(p_ren_x * self.cell_size + self.left_offset)
             px_y = int((p_ren_y * self.cell_size) + self.top_offset)
-            is_moving = (p_new_x != p_old_x) or (p_new_y != p_old_y)
-            direction = player.direction if player.direction else "E"
-            direction_frames = self.pac_sprites.get(direction, self.pac_frames)
+            p_dir: str = player.direction if player.direction in self.pac_sprites else "E"
+            dir_frames: List[pygame.surface.Surface] = self.pac_sprites[p_dir]
+            is_moving: bool = (p_new_x != p_old_x) or (p_new_y != p_old_y)
             if not is_moving:
-                current_sprite = direction_frames[0]
+                rotated_sprite = dir_frames[2]
             else:
-                wave = math.sin(pygame.time.get_ticks() * 0.02)
-                if wave > 0.4:
-                    current_sprite = direction_frames[0]
-                elif wave < -0.4:
-                    current_sprite = direction_frames[2]
-                else:
-                    current_sprite = direction_frames[1]
-            self.screen.blit(current_sprite, (px_x, px_y))
+                frame_idx = (current_time // 16) % len(dir_frames)
+                rotated_sprite = dir_frames[frame_idx]
+
+            self.screen.blit(rotated_sprite, (px_x, px_y))
 
             maze_pixel_width = self.game.config.width * self.cell_size
             hud_y = self.top_offset - (self.hud_reserved_space // 2)
