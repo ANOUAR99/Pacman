@@ -1,12 +1,27 @@
 NAME = pac-man.py
 PYTHON = python3
 CONFIG = config.json
-
+RELEASE = release
+APP = pacman
 VENV = .venv
 PIP = $(VENV)/bin/pip
 PYTHON_VENV = $(VENV)/bin/python
 
 all: run
+
+package: install
+	@echo "Installing PyInstaller..."
+	@$(PIP) install -q pyinstaller
+	@echo "Building executable..."
+	@$(PYTHON_VENV) -m PyInstaller --noconfirm --clean --onefile \
+		--add-data "src/assets:src/assets" \
+		--name $(APP) $(NAME)
+	@echo "Creating release folder..."
+	@rm -rf $(RELEASE)
+	@mkdir -p $(RELEASE)/$(APP)
+	@cp dist/$(APP) $(CONFIG) README.md play.sh $(RELEASE)/$(APP)/
+	@cd $(RELEASE) && zip -qr $(APP)-linux.zip $(APP)
+	@echo "Package ready: $(RELEASE)/$(APP)-linux.zip"
 
 install: requirements.txt
 	@if [ ! -d "$(VENV)" ] || [ requirements.txt -nt "$(VENV)" ]; then \
@@ -43,9 +58,9 @@ lint: install
 	  --follow-imports=skip src/
 
 fclean: clean
-	@echo "Sweeping virtual environment..."	
-	@rm -rf $(VENV)
+	@echo "Sweeping virtual environment and build files..."
+	@rm -rf $(VENV) build dist $(RELEASE)
 
 re: fclean all
 
-.PHONY: all install run debug clean lint lint-strict fclean re
+.PHONY: all install run package debug clean lint lint-strict fclean re

@@ -13,3 +13,8 @@ __pycache__/
 # Highscore
 highscores.json
 
+# Release
+release/
+dist/
+build/
+pacman.spec
