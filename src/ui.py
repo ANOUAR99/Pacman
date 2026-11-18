@@ -8,6 +8,27 @@ from src.config import Config, parse_config, read_config, remove_comments
 from src.game import Game
 from src.highscore import HighScore
 
+_CELL_SIZE: int = 0
+_LEFT_OFFSET: int = 0
+_TOP_OFFSET: int = 0
+
+
+def grid_to_screen(x: float, y: float) -> Tuple[int, int]:
+    """
+    Converts an object's grid position to its screen pixel position.
+
+    Args:
+        x: Column of the object in the maze (can be fractional).
+        y: Row of the object in the maze (can be fractional).
+
+    Returns:
+        (screen_x, screen_y): top-left pixel of the object's cell.
+    """
+    return (
+        int(_LEFT_OFFSET + x * _CELL_SIZE),
+        int(_TOP_OFFSET + y * _CELL_SIZE),
+    )
+
 
 class PacmanUI:
     """
@@ -90,9 +111,7 @@ class PacmanUI:
         # Fonts
         self.main_size: int = min(40, max(16, self.screen_width // 60))
         self.small_size: int = min(20, max(10, self.screen_width // 90))
-        self.font: pygame.font.Font = pygame.font.Font(
-            str(font_path), self.main_size
-        )
+        self.font: pygame.font.Font = pygame.font.Font(str(font_path), self.main_size)
         self.small_font: pygame.font.Font = pygame.font.Font(
             str(font_path), self.small_size
         )
@@ -129,7 +148,7 @@ class PacmanUI:
             color_sprites: Dict[str, pygame.surface.Surface] = {}
             for cardinal, file_suffix in dir_map.items():
                 path = project_root / "src" / "assets" / f"{color}_{file_suffix}.png"
-                try:        
+                try:
                     img = pygame.image.load(str(path)).convert_alpha()
                     color_sprites[cardinal] = pygame.transform.scale(
                         img, (self.cell_size, self.cell_size)
@@ -156,8 +175,16 @@ class PacmanUI:
             (self.cell_size, self.cell_size),
         )
         mouth_steps: List[str] = [
-            "wide", "very", "open", "quite", "halopen",
-            "half", "partly", "almost", "sliver", "closed",
+            "wide",
+            "very",
+            "open",
+            "quite",
+            "halopen",
+            "half",
+            "partly",
+            "almost",
+            "sliver",
+            "closed",
         ]
         base_frames: List[pygame.surface.Surface] = []
 
@@ -205,7 +232,10 @@ class PacmanUI:
         except FileNotFoundError as e:
             print(f"[SYSTEM ERROR] Failed to load backdrop: {e}")
             sys.exit(1)
-        
+        global _CELL_SIZE, _LEFT_OFFSET, _TOP_OFFSET
+        _CELL_SIZE = self.cell_size
+        _LEFT_OFFSET = self.left_offset
+        _TOP_OFFSET = self.top_offset
 
     def handle_events(self) -> None:
         """
@@ -266,9 +296,7 @@ class PacmanUI:
                         self.input_buffer.pop(0)
 
                     if self.input_buffer == self.secret_code:
-                        is_god = not getattr(
-                            self.game.player, "god_mode", False
-                        )
+                        is_god = not getattr(self.game.player, "god_mode", False)
                         setattr(self.game.player, "god_mode", is_god)
                         print(f"[SYSTEM] GOD MODE: {is_god}")
                         self.input_buffer.clear()
@@ -288,9 +316,7 @@ class PacmanUI:
                     if event.key == pygame.K_RETURN:
                         self.state = "MAIN_MENU"
                         if self.real_add_score and self.game:
-                            self.real_add_score(
-                                self.input_text, self.game.player.score
-                            )
+                            self.real_add_score(self.input_text, self.game.player.score)
                             if hasattr(self.game, "high_scores"):
                                 self.game.high_scores.save()
                         self.input_text = ""
@@ -450,35 +476,16 @@ class PacmanUI:
 
             gum_radius = max(2, self.cell_size // 10)
             for x, y in self.game.maze.pacgums:
-                cx = (
-                    (x * self.cell_size)
-                    + (self.cell_size // 2)
-                    + self.left_offset
-                )
-                cy = (
-                    (y * self.cell_size)
-                    + (self.cell_size // 2)
-                    + self.top_offset
-                )
-                pygame.draw.circle(
-                    self.screen, (255, 255, 255), (cx, cy), gum_radius
-                )
+                cx = (x * self.cell_size) + (self.cell_size // 2) + self.left_offset
+                cy = (y * self.cell_size) + (self.cell_size // 2) + self.top_offset
+                pygame.draw.circle(self.screen, (255, 255, 255), (cx, cy), gum_radius)
 
             base_super_radius = max(4, self.cell_size // 4)
             for x, y in self.game.maze.super_pacgums:
-                cx = (
-                    (x * self.cell_size)
-                    + (self.cell_size // 2)
-                    + self.left_offset
-                )
-                cy = (
-                    (y * self.cell_size)
-                    + (self.cell_size // 2)
-                    + self.top_offset
-                )
+                cx = (x * self.cell_size) + (self.cell_size // 2) + self.left_offset
+                cy = (y * self.cell_size) + (self.cell_size // 2) + self.top_offset
                 pulse = int(
-                    (self.cell_size // 10)
-                    * math.sin(pygame.time.get_ticks() / 150.0)
+                    (self.cell_size // 10) * math.sin(pygame.time.get_ticks() / 150.0)
                 )
                 pygame.draw.circle(
                     self.screen,
@@ -505,8 +512,7 @@ class PacmanUI:
                 pixel_y = int((render_y * self.cell_size) + self.top_offset)
                 if (
                     ghost.eaten_time
-                    and current_time - ghost.eaten_time
-                    <= self.game.ghost_respawn_delay
+                    and current_time - ghost.eaten_time <= self.game.ghost_respawn_delay
                 ):
                     active_img = self.eyes_img
                 elif ghost.frightened:
@@ -516,11 +522,7 @@ class PacmanUI:
                         else 0.0
                     )
                     if self.game.frightened_start:
-                        elapsed = (
-                            time.monotonic()
-                            - self.game.frightened_start
-                            - p_time
-                        )
+                        elapsed = time.monotonic() - self.game.frightened_start - p_time
                     remaining = self.game.frightened_duration - elapsed
                     if remaining < 3.0 and (current_time // 200) % 2 == 0:
                         active_img = self.w_ghost_img
@@ -547,7 +549,9 @@ class PacmanUI:
 
             px_x = int(p_ren_x * self.cell_size + self.left_offset)
             px_y = int((p_ren_y * self.cell_size) + self.top_offset)
-            p_dir: str = player.direction if player.direction in self.pac_sprites else "E"
+            p_dir: str = (
+                player.direction if player.direction in self.pac_sprites else "E"
+            )
             dir_frames: List[pygame.surface.Surface] = self.pac_sprites[p_dir]
             is_moving: bool = (p_new_x != p_old_x) or (p_new_y != p_old_y)
             if not is_moving:
@@ -576,12 +580,8 @@ class PacmanUI:
             stats_rect = stats_surf.get_rect(center=(center_x, hud_y))
             self.screen.blit(stats_surf, stats_rect)
 
-            t_elapsed = (
-                time.monotonic() - self.game.start_time - self.game.paused_time
-            )
-            remaining_time = max(
-                0, int(self.game.config.level_max_time - t_elapsed)
-            )
+            t_elapsed = time.monotonic() - self.game.start_time - self.game.paused_time
+            remaining_time = max(0, int(self.game.config.level_max_time - t_elapsed))
             time_surf = self.small_font.render(
                 f"TIME: {remaining_time}", True, (255, 255, 255)
             )
@@ -600,23 +600,17 @@ class PacmanUI:
                 pause_menu = ["RESUME", "RETURN TO MAIN MENU"]
                 for i, option in enumerate(pause_menu):
                     color = (
-                        (0, 255, 255)
-                        if i == self.selected_index
-                        else (255, 255, 255)
+                        (0, 255, 255) if i == self.selected_index else (255, 255, 255)
                     )
                     text_surface = self.font.render(option, True, color)
-                    y_pos = (self.screen_height // 2) + (
-                        i * (self.main_size + 20)
-                    )
+                    y_pos = (self.screen_height // 2) + (i * (self.main_size + 20))
                     option_rect = text_surface.get_rect(
                         center=(self.screen_width // 2, y_pos)
                     )
                     self.screen.blit(text_surface, option_rect)
 
             if getattr(player, "god_mode", False):
-                cheat_surf = self.small_font.render(
-                    "GOD MODE", True, (0, 255, 0)
-                )
+                cheat_surf = self.small_font.render("GOD MODE", True, (0, 255, 0))
                 self.screen.blit(
                     cheat_surf,
                     cheat_surf.get_rect(
@@ -659,19 +653,13 @@ class PacmanUI:
             row_spacing = self.small_size + 15
 
             if not hs.scores:
-                msg = self.font.render(
-                    "No highscores yet!", True, (255, 255, 255)
-                )
-                msg_rect = msg.get_rect(
-                    center=(self.screen_width // 2, start_y)
-                )
+                msg = self.font.render("No highscores yet!", True, (255, 255, 255))
+                msg_rect = msg.get_rect(center=(self.screen_width // 2, start_y))
                 self.screen.blit(msg, msg_rect)
             else:
                 for i, entry in enumerate(hs.scores):
                     score_text = f"{i+1}. {entry.name} - {entry.score} pts"
-                    surface = self.font.render(
-                        score_text, True, (255, 255, 255)
-                    )
+                    surface = self.font.render(score_text, True, (255, 255, 255))
                     score_rect = surface.get_rect(
                         center=(
                             self.screen_width // 2,
