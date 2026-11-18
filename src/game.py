@@ -3,8 +3,10 @@ from src.maze import Maze
 from src.player import Player
 from src.ghost import Ghost
 from src.highscore import HighScore
+
 import time
 import random
+import math
 
 
 class Game:
@@ -26,6 +28,8 @@ class Game:
         self.ghost_move_delay = 0.25
         self.ghost_detect_range = 5
         self.player_eaten = False
+        self.ghost_speed = 0.8   # fraction of Pac-Man's speed
+        self.ghost_accum = 0.0
 
     def start_level(self, lives: int, score: int, new_seed: int) -> None:
         """Initialize the current level."""
@@ -111,40 +115,25 @@ class Game:
         else:
             return self.player.reset_position(width, height)
 
-    def handle_collisions(
-        self,
-        previous_player_position: tuple[int, int] | None = None,
-        previous_ghost_positions: list[tuple[int, int]] | None = None,
-    ) -> None:
-        """Handle collisions between ghosts and the player."""
+    def handle_collisions(self, collisions: list[bool]) -> None:
+        """Handle collisions reported by the UI."""
         player_hit = False
 
-        for index, ghost in enumerate(self.ghosts):
-            crossed_paths = False
+        for ghost, collided in zip(self.ghosts, collisions):
+            if not collided:
+                continue
 
-            if (
-                previous_player_position is not None
-                and previous_ghost_positions is not None
-            ):
-                crossed_paths = (
-                    (self.player.x, self.player.y)
-                    == previous_ghost_positions[index]
-                    and (ghost.x, ghost.y) == previous_player_position
-                    and previous_player_position
-                    != (self.player.x, self.player.y)
-                )
-
-            result = ghost.handle_collision(self.player, crossed_paths)
+            result = ghost.handle_collision()
 
             if result == "ghost_defeated":
                 self.player.score += self.config.points_per_ghost
-                ghost.reset_position()
 
             elif result == "player_hit" and not self.player.god_mode:
                 player_hit = True
 
         if player_hit:
             self.player.lose_life()
+
             if self.player.lives == 0:
                 self.game_over = True
             else:
@@ -190,10 +179,7 @@ class Game:
                 self.high_scores.save()
                 self.score_saved = True
             return
-        previous_player_position = (self.player.x, self.player.y)
-        previous_ghost_positions = [
-            (ghost.x, ghost.y) for ghost in self.ghosts
-        ]
+
         if self.queued_direction is not None:
             if self.maze.can_move(
                 self.player.x, self.player.y, self.queued_direction
@@ -209,8 +195,9 @@ class Game:
                     ghost.recover()
                 self.frightened_start = None
 
-        if current_time - self.last_ghost_move >= self.ghost_move_delay:
-            self.last_ghost_move = current_time
+        self.ghost_accum += self.ghost_speed
+        if self.ghost_accum >= 1.0:
+            self.ghost_accum -= 1.0
             for ghost in self.ghosts:
                 if ghost.eaten_time is not None:
                     continue
@@ -224,10 +211,6 @@ class Game:
                         self.ghost_detect_range,
                     )
 
-        self.handle_collisions(
-            previous_player_position,
-            previous_ghost_positions,
-        )
         for ghost in self.ghosts:
             if (
                 ghost.eaten_time is not None

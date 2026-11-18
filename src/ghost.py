@@ -18,13 +18,9 @@ class Ghost:
         self.frightened = False
         self.eaten_time: float | None = None
 
-    def collides_with(self, player_x: int, player_y: int) -> bool:
-        """Return True if the ghost occupies the player's position."""
-        return self.x == player_x and self.y == player_y
-
-    def handle_collision(self, player: Player, crossed: bool) -> str:
-        """Handle a collision with the player."""
-        if not self.collides_with(player.x, player.y) and not crossed:
+    def handle_collision(self) -> str:
+        """Return the result of a collision with the player."""
+        if self.eaten_time is not None:
             return "none"
 
         if self.frightened:
@@ -95,7 +91,7 @@ class Ghost:
                     return first_move[nxt]
                 queue.append(nxt)
         return None
-
+    print("GHOST MOVED")
     def chase(
         self, maze: Maze, target_x: int, target_y: int, max_range: int
     ) -> bool:

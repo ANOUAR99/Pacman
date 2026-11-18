@@ -77,7 +77,7 @@ class PacmanUI:
         ]
         self.selected_index: int = 0
         self.last_engine_tick: int = 0
-        self.tick_delay: int = 170
+        self.tick_delay: int = 250
 
         # Memory allocations for Lerp and Input
         self.prev_player_pos: Tuple[float, float] = (0.0, 0.0)
@@ -333,6 +333,59 @@ class PacmanUI:
                 elif self.state in ["HIGHSCORES", "INSTRUCTIONS"]:
                     if event.key == pygame.K_ESCAPE:
                         self.state = "MAIN_MENU"
+    def get_sprite_rects(
+    self,
+) -> Tuple[pygame.Rect, List[pygame.Rect]]:
+        """Return collision rectangles at the current animation positions."""
+        if self.game is None:
+            return pygame.Rect(0, 0, 0, 0), []
+
+        current_time = pygame.time.get_ticks()
+        time_since_tick = current_time - self.last_engine_tick
+        progress = min(time_since_tick / self.tick_delay, 1.0)
+
+        # Calculate Pac-Man's interpolated position
+        old_x, old_y = self.prev_player_pos
+        new_x, new_y = self.game.player.x, self.game.player.y
+
+        if abs(new_x - old_x) > 5 or abs(new_y - old_y) > 5:
+            player_x, player_y = float(new_x), float(new_y)
+        else:
+            player_x = old_x + (new_x - old_x) * progress
+            player_y = old_y + (new_y - old_y) * progress
+
+        player_rect = pygame.Rect(
+            int(player_x * self.cell_size + self.left_offset),
+            int(player_y * self.cell_size + self.top_offset),
+            self.cell_size,
+            self.cell_size,
+        )
+
+        # Calculate each ghost's interpolated position
+        ghost_rects: List[pygame.Rect] = []
+
+        for i, ghost in enumerate(self.game.ghosts):
+            old_x, old_y = self.prev_ghost_pos.get(
+                i, (float(ghost.x), float(ghost.y))
+            )
+            new_x, new_y = ghost.x, ghost.y
+
+            if abs(new_x - old_x) > 5 or abs(new_y - old_y) > 5:
+                ghost_x, ghost_y = float(new_x), float(new_y)
+            else:
+                ghost_x = old_x + (new_x - old_x) * progress
+                ghost_y = old_y + (new_y - old_y) * progress
+
+            ghost_rect = pygame.Rect(
+                int(ghost_x * self.cell_size + self.left_offset),
+                int(ghost_y * self.cell_size + self.top_offset),
+                self.cell_size,
+                self.cell_size,
+            )
+
+            ghost_rects.append(ghost_rect)
+
+        return player_rect, ghost_rects
 
     def render(self) -> None:
         """
@@ -766,13 +819,24 @@ class PacmanUI:
                         self.active_direction = None
                         self.queued_direction = None
 
-                    self.last_engine_tick = current_time
+                    self.last_engine_tick = pygame.time.get_ticks()
 
                     if self.game.game_over:
                         self.state = "GAME_OVER"
                     elif self.game.level_won:
                         self.state = "VICTORY"
             self.render()
+
+            if self.state == "PLAYING" and self.game is not None:
+                player_rect, ghost_rects = self.get_sprite_rects()
+
+                collisions = [
+                    player_rect.colliderect(ghost_rect)
+                    for ghost_rect in ghost_rects
+                ]
+
+                self.game.handle_collisions(collisions)
+
             self.clock.tick(60)
 
 
