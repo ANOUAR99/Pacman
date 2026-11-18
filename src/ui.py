@@ -11,9 +11,10 @@ from src.highscore import HighScore
 _CELL_SIZE: int = 0
 _LEFT_OFFSET: int = 0
 _TOP_OFFSET: int = 0
+_SCREEN_WIDTH: int = 0
 
 
-def grid_to_screen(x: float, y: float) -> Tuple[int, int]:
+def grid_to_screen(x: float, y: float) -> Tuple[int, int, int]:
     """
     Converts an object's grid position to its screen pixel position.
 
@@ -25,6 +26,7 @@ def grid_to_screen(x: float, y: float) -> Tuple[int, int]:
         (screen_x, screen_y): top-left pixel of the object's cell.
     """
     return (
+        _SCREEN_WIDTH,
         int(_LEFT_OFFSET + x * _CELL_SIZE),
         int(_TOP_OFFSET + y * _CELL_SIZE),
     )
@@ -236,6 +238,7 @@ class PacmanUI:
         _CELL_SIZE = self.cell_size
         _LEFT_OFFSET = self.left_offset
         _TOP_OFFSET = self.top_offset
+        _SCREEN_WIDTH = self.screen_width
 
     def handle_events(self) -> None:
         """
