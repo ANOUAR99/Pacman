@@ -731,9 +731,9 @@ class PacmanUI:
         elif self.state in ["GAME_OVER", "VICTORY"]:
             if self.state == "VICTORY":
                 self.screen.blit(self.menu_bg, (0, 0))
-                victory = self.font.render("VICTORY", True, (0, 0, 255))
+                victory = self.font.render("VICTORY", True, (255, 255, 0))
                 victory_rect = victory.get_rect(
-                    center=(self.screen_width // 2, self.screen_height // 3)
+                    center=(self.screen_width // 2, self.screen_height // 2)
                 )
                 self.screen.blit(victory, victory_rect)
             else:
