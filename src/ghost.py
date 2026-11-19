@@ -91,7 +91,7 @@ class Ghost:
                     return first_move[nxt]
                 queue.append(nxt)
         return None
-    print("GHOST MOVED")
+
     def chase(
         self, maze: Maze, target_x: int, target_y: int, max_range: int
     ) -> bool:

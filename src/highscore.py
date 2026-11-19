@@ -62,12 +62,10 @@ class HighScore:
                     if len(name) > 10 or not name.replace(" ", "").isalnum():
                         self.scores = []
                         return
-                    loaded_scores.sort(key=lambda x: x.score, reverse=True)
-                    if len(loaded_scores) > 10:
-                        loaded_scores = loaded_scores[:10]
                     loaded_scores.append(Score(name, score))
 
-                self.scores = loaded_scores
+                loaded_scores.sort(key=lambda x: x.score, reverse=True)
+                self.scores = loaded_scores[:10]
 
         except (FileNotFoundError, json.JSONDecodeError):
             self.scores = []

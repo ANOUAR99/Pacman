@@ -22,6 +22,7 @@ class Maze:
         self.exit = generator.maze_exit
         self.shortest_path = generator.shortest_path
         self.player_start = player_start
+        self.rng = random.Random(seed)  # same seed -> same Pac-Gums
         self.pacgums: set[tuple[int, int]] = set()
         self.super_pacgums: set[tuple[int, int]] = set()
         self._place_pacgums()
@@ -52,7 +53,7 @@ class Maze:
             return
         if len(valid_pac) < nb_pacgum:
             nb_pacgum = len(valid_pac)
-        positions = random.sample(valid_pac, nb_pacgum)
+        positions = self.rng.sample(valid_pac, nb_pacgum)
         for pos in positions:
             self.pacgums.add(pos)
 

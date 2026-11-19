@@ -28,7 +28,7 @@ class Game:
         self.ghost_move_delay = 0.25
         self.ghost_detect_range = 5
         self.player_eaten = False
-        self.ghost_speed = 0.8   # fraction of Pac-Man's speed
+        self.ghost_speed = 1.0   # < 1 makes ghosts skip ticks (stutter)
         self.ghost_accum = 0.0
 
     def start_level(self, lives: int, score: int, new_seed: int) -> None:
@@ -127,6 +127,7 @@ class Game:
 
             if result == "ghost_defeated":
                 self.player.score += self.config.points_per_ghost
+                ghost.reset_position()  # eyes wait at home, not mid-maze
 
             elif result == "player_hit" and not self.player.god_mode:
                 player_hit = True
@@ -138,7 +139,8 @@ class Game:
                 self.game_over = True
             else:
                 self.reset()
-                self.player_eaten = True
+                for ghost in self.ghosts:  # now, not on the next tick
+                    ghost.reset_position()
 
     def check_win(self) -> None:
         """Check whether the player has collected all Pac-Gums."""
@@ -158,8 +160,15 @@ class Game:
         if not self.paused:
             return
 
-        self.paused_time += time.monotonic() - self.pause_start
+        pause_length = time.monotonic() - self.pause_start
+        self.paused_time += pause_length
         self.paused = False
+        # Frightened and respawn timers must not run during the pause
+        if self.frightened_start is not None:
+            self.frightened_start += pause_length
+        for ghost in self.ghosts:
+            if ghost.eaten_time is not None:
+                ghost.eaten_time += pause_length
 
     def check_timeout(self) -> None:
         """Check whether the level time limit has expired."""
