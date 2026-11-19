@@ -72,6 +72,8 @@ class Game:
     def next_level(self) -> None:
         """Start the next level while preserving lives and score."""
         self.level += 1
+        if self.level > 10:
+            return
         self.level_won = False
         seed = random.randint(43, 1000)
 
